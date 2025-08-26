@@ -1,0 +1,2 @@
+### Selfcheck (should be 200)
+GET https://httpbin.org/get
