@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "maxLength": 140,
+      "minLength": 3
+    },
+    "iban": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "iban",
+    "name"
+  ]
+}

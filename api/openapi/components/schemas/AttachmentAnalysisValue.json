@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "$ref": "./AttachmentAnalysisValueTypeEnum.json"
+    },
+    "value": {
+      "type": "string",
+      "nullable": true,
+      "readOnly": true
+    }
+  },
+  "required": [
+    "type",
+    "value"
+  ]
+}

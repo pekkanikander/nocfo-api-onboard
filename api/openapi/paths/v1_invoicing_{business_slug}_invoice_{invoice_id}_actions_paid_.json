@@ -1,0 +1,34 @@
+{
+  "post": {
+    "operationId": "invoicing_invoice_actions_paid_create",
+    "description": "Marks the invoice as paid, updating its status and payment date.",
+    "summary": "Sales Invoice - Set as Paid",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "description": "No response body"
+      }
+    }
+  }
+}

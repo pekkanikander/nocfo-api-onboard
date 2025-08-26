@@ -1,0 +1,84 @@
+{
+  "get": {
+    "operationId": "Businesses - List",
+    "description": "This endpoint covers editing and viewing the details of a single document. You can retrieve the document's detailed information, update it, or delete it from here.",
+    "summary": "Businesses - List",
+    "parameters": [
+      {
+        "name": "page",
+        "required": false,
+        "in": "query",
+        "description": "A page number within the paginated result set.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "name": "page_size",
+        "required": false,
+        "in": "query",
+        "description": "Number of results to return per page.",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "tags": [
+      "Businesses",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PaginatedBusinessList.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "post": {
+    "operationId": "Businesses - Create",
+    "description": "This endpoint covers editing and viewing the details of a single document. You can retrieve the document's detailed information, update it, or delete it from here.",
+    "summary": "Businesses - Create",
+    "tags": [
+      "Businesses",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/Business.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/Business.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/Business.json"
+          }
+        }
+      },
+      "required": true
+    },
+    "responses": {
+      "201": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/Business.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  }
+}

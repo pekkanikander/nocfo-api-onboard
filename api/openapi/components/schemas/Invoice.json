@@ -1,0 +1,294 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was last updated."
+    },
+    "friendly_name": {
+      "type": "string",
+      "readOnly": true
+    },
+    "receiver": {
+      "type": "integer"
+    },
+    "receiver_info": {
+      "allOf": [
+        {
+          "$ref": "./Contact.json"
+        }
+      ],
+      "readOnly": true
+    },
+    "contact_person": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "invoice_number": {
+      "type": "integer",
+      "readOnly": true,
+      "nullable": true
+    },
+    "invoicing_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "payment_condition_days": {
+      "type": "integer",
+      "maximum": 999,
+      "minimum": 0
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "readOnly": true
+    },
+    "reference": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 20
+    },
+    "penalty_interest": {
+      "type": "number",
+      "format": "double"
+    },
+    "currency": {
+      "type": "string",
+      "readOnly": true
+    },
+    "vat_country": {
+      "type": "string",
+      "readOnly": true
+    },
+    "description": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 512
+    },
+    "is_credit_note_for": {
+      "type": "integer",
+      "nullable": true
+    },
+    "credit_notes": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "readOnly": true
+    },
+    "pdf": {
+      "allOf": [
+        {
+          "$ref": "./AttachmentInstance.json"
+        }
+      ],
+      "readOnly": true
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "$ref": "./InvoiceRow.json"
+      }
+    },
+    "status": {
+      "$ref": "./InvoiceStatusEnum.json"
+    },
+    "total_vat_amount": {
+      "type": "number",
+      "format": "float",
+      "readOnly": true
+    },
+    "total_amount": {
+      "type": "number",
+      "format": "float",
+      "readOnly": true
+    },
+    "is_editable": {
+      "type": "string",
+      "readOnly": true
+    },
+    "is_active_recurrence_template": {
+      "type": "boolean"
+    },
+    "is_recurrence_active": {
+      "type": "boolean",
+      "readOnly": true
+    },
+    "is_recurrence_end_exceeded": {
+      "type": "string",
+      "readOnly": true
+    },
+    "is_recurrence_applied": {
+      "type": "boolean",
+      "description": "Tells if invoice was created from recurring invoice template\nor if invoice has some fulfilled recurrences. Property is mostly\nused in UI to show icon for recurring invoices.",
+      "readOnly": true
+    },
+    "is_past_due": {
+      "type": "string",
+      "readOnly": true
+    },
+    "delivery_method": {
+      "nullable": true,
+      "oneOf": [
+        {
+          "$ref": "./DeliveryMethodEnum.json"
+        },
+        {
+          "$ref": "./NullEnum.json"
+        }
+      ]
+    },
+    "is_sendable": {
+      "type": "string",
+      "readOnly": true
+    },
+    "last_delivery_at": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "recurrence_rule": {
+      "nullable": true
+    },
+    "recurrence_parent_id": {
+      "type": "integer",
+      "readOnly": true,
+      "nullable": true,
+      "description": "Invoice that this invoice is based on"
+    },
+    "recurrence_reference_method": {
+      "nullable": true,
+      "description": "Method for calculating the reference\n\n* `KEEP` - Keep\n* `ROLL` - Roll",
+      "oneOf": [
+        {
+          "$ref": "./RecurrenceReferenceMethodEnum.json"
+        },
+        {
+          "$ref": "./BlankEnum.json"
+        },
+        {
+          "$ref": "./NullEnum.json"
+        }
+      ]
+    },
+    "recurrence_email_subject": {
+      "type": "string",
+      "nullable": true
+    },
+    "recurrence_email_content": {
+      "type": "string",
+      "nullable": true
+    },
+    "recurrence_end": {
+      "type": "string",
+      "format": "date",
+      "nullable": true
+    },
+    "next_recurrences": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "date"
+      },
+      "readOnly": true
+    },
+    "is_registered_to_kravia": {
+      "type": "string",
+      "readOnly": true
+    },
+    "earliest_debt_collection_date": {
+      "type": "string",
+      "format": "date",
+      "readOnly": true
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "settlement_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true
+    },
+    "seller_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Viiteemme",
+      "maxLength": 32
+    },
+    "buyer_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Viiteenne",
+      "maxLength": 32
+    },
+    "bank_transaction": {
+      "allOf": [
+        {
+          "$ref": "./DocumentImport.json"
+        }
+      ],
+      "readOnly": true
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "readOnly": true,
+      "nullable": true
+    },
+    "document": {
+      "allOf": [
+        {
+          "$ref": "./Document.json"
+        }
+      ],
+      "readOnly": true
+    }
+  },
+  "required": [
+    "bank_transaction",
+    "created_at",
+    "credit_notes",
+    "currency",
+    "document",
+    "due_date",
+    "earliest_debt_collection_date",
+    "friendly_name",
+    "id",
+    "invoice_number",
+    "invoicing_date",
+    "is_editable",
+    "is_past_due",
+    "is_recurrence_active",
+    "is_recurrence_applied",
+    "is_recurrence_end_exceeded",
+    "is_registered_to_kravia",
+    "is_sendable",
+    "next_recurrences",
+    "payment_condition_days",
+    "payment_date",
+    "pdf",
+    "receiver",
+    "receiver_info",
+    "recurrence_parent_id",
+    "total_amount",
+    "total_vat_amount",
+    "updated_at",
+    "vat_country"
+  ]
+}

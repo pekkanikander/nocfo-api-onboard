@@ -1,0 +1,190 @@
+{
+  "get": {
+    "operationId": "File - Retrieve",
+    "description": "This endpoint covers editing and viewing the details of a single file. You can retrieve the file's detailed information, update it, or delete it from here.",
+    "summary": "File - Retrieve",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "file_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Files",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/AttachmentInstance.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "put": {
+    "operationId": "File - Update",
+    "description": "This endpoint covers editing and viewing the details of a single file. You can retrieve the file's detailed information, update it, or delete it from here.",
+    "summary": "File - Update",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "file_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Files",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/AttachmentInstance.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/AttachmentInstance.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/AttachmentInstance.json"
+          }
+        }
+      },
+      "required": true
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/AttachmentInstance.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "patch": {
+    "operationId": "File - Partial Update",
+    "description": "This endpoint covers editing and viewing the details of a single file. You can retrieve the file's detailed information, update it, or delete it from here.",
+    "summary": "File - Partial Update",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "file_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Files",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedAttachmentInstance.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedAttachmentInstance.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedAttachmentInstance.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/AttachmentInstance.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "delete": {
+    "operationId": "File - Delete",
+    "description": "This endpoint covers editing and viewing the details of a single file. You can retrieve the file's detailed information, update it, or delete it from here.",
+    "summary": "File - Delete",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "file_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Files",
+      "MCP"
+    ],
+    "responses": {
+      "204": {
+        "description": "No response body"
+      }
+    }
+  }
+}

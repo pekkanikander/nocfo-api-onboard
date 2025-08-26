@@ -1,0 +1,34 @@
+{
+  "type": "object",
+  "properties": {
+    "requested_execution_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "holvi_account": {
+      "type": "string"
+    },
+    "creditor": {
+      "$ref": "./CreditorInfo.json"
+    },
+    "amount": {
+      "$ref": "./PaymentAmount.json"
+    },
+    "reference": {
+      "type": "string",
+      "maxLength": 35,
+      "minLength": 3
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 140,
+      "minLength": 3
+    }
+  },
+  "required": [
+    "amount",
+    "creditor",
+    "holvi_account",
+    "requested_execution_date"
+  ]
+}

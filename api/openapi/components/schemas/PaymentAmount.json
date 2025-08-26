@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "amount": {
+      "type": "number",
+      "format": "float"
+    },
+    "currency": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "amount",
+    "currency"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "enum": [
+    "DRAFT",
+    "ACCEPTED",
+    "PAID",
+    "CREDIT_LOSS"
+  ],
+  "type": "string",
+  "description": "* `DRAFT` - Luonnos\n* `ACCEPTED` - Hyväksytty\n* `PAID` - Maksettu\n* `CREDIT_LOSS` - Luottotappio"
+}

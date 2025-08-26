@@ -1,0 +1,11 @@
+{
+  "enum": [
+    "PENDING",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "CANCELLED",
+    "FAILED"
+  ],
+  "type": "string",
+  "description": "* `PENDING` - Odottaa\n* `IN_PROGRESS` - Kesken\n* `COMPLETED` - Valmis\n* `CANCELLED` - Peruttu\n* `FAILED` - Epäonnistunut"
+}

@@ -1,0 +1,190 @@
+{
+  "get": {
+    "operationId": "Account - Retrieve",
+    "description": "This endpoint covers editing and viewing the details of a single account. You can retrieve the account's detailed information, update it, or delete it from here.",
+    "summary": "Account - Retrieve",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "account_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Accounts",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/Account.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "put": {
+    "operationId": "Account - Update",
+    "description": "This endpoint covers editing and viewing the details of a single account. You can retrieve the account's detailed information, update it, or delete it from here.",
+    "summary": "Account - Update",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "account_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Accounts",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/Account.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/Account.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/Account.json"
+          }
+        }
+      },
+      "required": true
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/Account.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "patch": {
+    "operationId": "Account - Partial Update",
+    "description": "This endpoint covers editing and viewing the details of a single account. You can retrieve the account's detailed information, update it, or delete it from here.",
+    "summary": "Account - Partial Update",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "account_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Accounts",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedAccount.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedAccount.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedAccount.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/Account.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "delete": {
+    "operationId": "Account - Delete",
+    "description": "This endpoint covers editing and viewing the details of a single account. You can retrieve the account's detailed information, update it, or delete it from here.",
+    "summary": "Account - Delete",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "account_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Accounts",
+      "MCP"
+    ],
+    "responses": {
+      "204": {
+        "description": "No response body"
+      }
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was last updated."
+    },
+    "invoice_number": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "invoicing_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true
+    },
+    "sender_vat": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "sender_name": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 128
+    },
+    "sender_bank_account": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "sender_bank_bic": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 16
+    },
+    "receiver_vat": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "receiver_name": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 128
+    },
+    "reference": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "original_invoice_xml": {
+      "type": "string",
+      "format": "uri",
+      "readOnly": true,
+      "nullable": true
+    },
+    "original_attachment": {
+      "$ref": "./AttachmentInstance.json"
+    },
+    "amount": {
+      "type": "number",
+      "format": "float"
+    },
+    "currency": {
+      "type": "string",
+      "maxLength": 16
+    },
+    "virtuaaliviivakoodi": {
+      "type": "string"
+    },
+    "is_paid": {
+      "type": "boolean"
+    },
+    "is_past_due": {
+      "type": "string",
+      "readOnly": true
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "readOnly": true
+    },
+    "import_source": {
+      "allOf": [
+        {
+          "$ref": "./ImportSourceEnum.json"
+        }
+      ],
+      "description": "Tells the source where the invoice was imported from.\n\n* `APIX` - Apix\n* `EMAIL` - Email\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
+    },
+    "payment": {
+      "allOf": [
+        {
+          "$ref": "./PaymentInstruction.json"
+        }
+      ],
+      "readOnly": true
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "readOnly": true,
+      "nullable": true
+    },
+    "bank_transaction": {
+      "allOf": [
+        {
+          "$ref": "./DocumentImport.json"
+        }
+      ],
+      "readOnly": true
+    },
+    "document": {
+      "allOf": [
+        {
+          "$ref": "./Document.json"
+        }
+      ],
+      "readOnly": true
+    }
+  }
+}

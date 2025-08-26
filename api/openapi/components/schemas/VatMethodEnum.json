@@ -1,0 +1,8 @@
+{
+  "enum": [
+    0,
+    1
+  ],
+  "type": "integer",
+  "description": "* `0` - Bruttokirjaus\n* `1` - Nettokirjaus"
+}

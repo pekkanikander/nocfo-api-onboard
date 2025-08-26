@@ -1,0 +1,77 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "trace_id": {
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true,
+      "nullable": true,
+      "description": "Unique identifier attached to logs. For debugging purposes."
+    },
+    "algo_status": {
+      "$ref": "./AlgoStatusEnum.json"
+    },
+    "algo_trial_restricted": {
+      "type": "string",
+      "readOnly": true
+    },
+    "data_source": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "identifier": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 256
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "amount": {
+      "type": "number",
+      "format": "float"
+    },
+    "description": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 2048
+    },
+    "contact_hint": {
+      "type": "string",
+      "nullable": true,
+      "title": "Contact",
+      "maxLength": 256
+    },
+    "balance_after_transaction": {
+      "type": "number",
+      "format": "float",
+      "readOnly": true
+    },
+    "reference_number": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "payment_account_id": {
+      "type": "integer",
+      "nullable": true,
+      "readOnly": true
+    }
+  },
+  "required": [
+    "algo_trial_restricted",
+    "amount",
+    "balance_after_transaction",
+    "data_source",
+    "date",
+    "id",
+    "payment_account_id",
+    "trace_id"
+  ]
+}

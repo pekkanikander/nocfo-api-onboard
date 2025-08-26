@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "fi",
+    "en",
+    "sv"
+  ],
+  "type": "string",
+  "description": "* `fi` - Suomi\n* `en` - Englanti\n* `sv` - Ruotsi"
+}

@@ -1,0 +1,13 @@
+{
+  "enum": [
+    "ATTACHMENT_TYPE",
+    "CONTACT_NAME",
+    "CURRENCY_CODE",
+    "INVOICE_DATE",
+    "INVOICE_DUE_DATE",
+    "RECEIPT_DATE",
+    "TOTAL_AMOUNT"
+  ],
+  "type": "string",
+  "description": "* `ATTACHMENT_TYPE` - Liitteen tyyppi\n* `CONTACT_NAME` - Kontaktin nimi\n* `CURRENCY_CODE` - Valuutta\n* `INVOICE_DATE` - Laskun päivämäärä\n* `INVOICE_DUE_DATE` - Laskun eräpäivä\n* `RECEIPT_DATE` - Kuitin päivämäärä\n* `TOTAL_AMOUNT` - Summa"
+}

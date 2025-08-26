@@ -1,0 +1,18 @@
+{
+  "enum": [
+    "FI_OY",
+    "FI_OYJ",
+    "FI_TMI",
+    "FI_KY",
+    "FI_OK",
+    "FI_AY",
+    "FI_AS_OY",
+    "FI_KOY",
+    "FI_NY",
+    "FI_YHD",
+    "DE_UG",
+    "DEMO"
+  ],
+  "type": "string",
+  "description": "* `FI_OY` - Osakeyhtiö (Oy)\n* `FI_OYJ` - Julkinen osakeyhtiö (Oyj)\n* `FI_TMI` - Toiminimi (Tmi)\n* `FI_KY` - Kommandiittiyhtiö (Ky)\n* `FI_OK` - Osuuskunta (Osk)\n* `FI_AY` - Avoin yhtiö (AY)\n* `FI_AS_OY` - Asunto-osakeyhtiö (As Oy)\n* `FI_KOY` - Kiinteistöosakeyhtiö (Koy)\n* `FI_NY` - NYT-yritys\n* `FI_YHD` - Yhdistys (ry)\n* `DE_UG` - Saksalainen yrittäjäosakeyhtiö (UG)\n* `DEMO` - Demo-yritys"
+}

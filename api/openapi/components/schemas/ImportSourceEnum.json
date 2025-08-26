@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "APIX",
+    "EMAIL",
+    "VAT_PURCHASE_INVOICE"
+  ],
+  "type": "string",
+  "description": "* `APIX` - Apix\n* `EMAIL` - Email\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
+}

@@ -1,0 +1,23 @@
+{
+  "name": "nocfo-api-onboard",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "spec:lint": "spectral lint api/openapi.yaml",
+    "spec:bundle": "redocly bundle api/openapi.yaml -o api/bundle.yaml",
+    "mock": "prism mock api/openapi.yaml -p 4010",
+    "proxy": "prism proxy api/openapi.yaml http://real.api --port 4011 --errors",
+    "check": "pnpm spec:lint && pnpm spec:bundle",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.0",
+  "devDependencies": {
+    "@redocly/cli": "^2.0.7",
+    "@stoplight/prism-cli": "^5.14.2",
+    "@stoplight/spectral-cli": "^6.15.0"
+  }
+}

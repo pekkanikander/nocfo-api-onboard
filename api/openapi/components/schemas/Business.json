@@ -1,0 +1,363 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was last updated."
+    },
+    "logo": {
+      "type": "string",
+      "format": "uri",
+      "readOnly": true,
+      "nullable": true
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "slug": {
+      "type": "string",
+      "maxLength": 16,
+      "pattern": "^[-a-zA-Z0-9_]+$"
+    },
+    "business_id": {
+      "type": "string"
+    },
+    "country_config": {
+      "readOnly": true
+    },
+    "period_id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "vat_period_id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "vat_posting_method": {
+      "$ref": "./VatPostingMethodEnum.json"
+    },
+    "form": {
+      "$ref": "./FormEnum.json"
+    },
+    "default_vat_period": {
+      "allOf": [
+        {
+          "$ref": "./DefaultVatPeriodEnum.json"
+        }
+      ],
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "invoicing_default_penalty_interest": {
+      "type": "number",
+      "format": "double"
+    },
+    "invoicing_default_payment_condition_days": {
+      "type": "integer",
+      "maximum": 999,
+      "minimum": 0
+    },
+    "has_accrual_based_entries_for_invoicing": {
+      "type": "boolean"
+    },
+    "owner_name": {
+      "type": "string",
+      "readOnly": true
+    },
+    "owner_email": {
+      "type": "string",
+      "readOnly": true
+    },
+    "has_history_before_nocfo": {
+      "type": "boolean"
+    },
+    "contact_phone": {
+      "type": "string",
+      "nullable": true,
+      "pattern": "^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\\s\\./0-9]*$",
+      "maxLength": 32
+    },
+    "invoicing_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "maxLength": 254
+    },
+    "invoicing_iban": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 34
+    },
+    "invoicing_tax_code": {
+      "type": "string",
+      "nullable": true,
+      "readOnly": true
+    },
+    "invoicing_bic": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 11
+    },
+    "invoicing_contact": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "invoicing_street": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "invoicing_city": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "invoicing_postal_code": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 8
+    },
+    "invoicing_country": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "has_business_address": {
+      "type": "string",
+      "readOnly": true
+    },
+    "business_street": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "business_city": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "business_postal_code": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 8
+    },
+    "business_country": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "account_yle_tax_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_tax_deferrals_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_income_tax_rec_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_income_tax_lia_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_previous_profit_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_vat_receivables_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_vat_liabilities_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_trade_receivables_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "account_payables_id": {
+      "type": "integer",
+      "nullable": true
+    },
+    "subscription_plan": {
+      "type": "string",
+      "readOnly": true,
+      "description": "Currently active subscription plan"
+    },
+    "subscription_source": {
+      "type": "string",
+      "readOnly": true,
+      "description": "Where the current subscription plan is controlled from"
+    },
+    "stripe_customer_id": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "stripe_subscription_id": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "can_invoice": {
+      "type": "string",
+      "readOnly": true
+    },
+    "onboarding_updated_invoicing_settings": {
+      "type": "boolean"
+    },
+    "onboarding_created_invoicing_contact": {
+      "type": "boolean"
+    },
+    "onboarding_created_invoicing_product": {
+      "type": "boolean"
+    },
+    "onboarding_einvoice_enabled": {
+      "type": "boolean"
+    },
+    "einvoicing_enabled": {
+      "type": "boolean"
+    },
+    "einvoicing_address": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "einvoicing_operator": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "apix_unique_id": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "apix_transfer_id": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "apix_transfer_key": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "holvi_bookkeeping_api_enabled": {
+      "type": "boolean"
+    },
+    "holvi_nocfo_connection_enabled": {
+      "type": "boolean"
+    },
+    "salaxy_enabled": {
+      "type": "boolean",
+      "readOnly": true
+    },
+    "salaxy_account_id": {
+      "type": "string",
+      "readOnly": true,
+      "nullable": true
+    },
+    "trial_progress_percentage": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "trial_days_left": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "is_trialing": {
+      "type": "boolean",
+      "readOnly": true
+    },
+    "demo_days_left": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "verohallinto_latest_reporter_full_name": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 300
+    },
+    "verohallinto_latest_reporter_phone_number": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "is_eligible_for_einvoicing": {
+      "type": "string",
+      "readOnly": true
+    },
+    "has_tags": {
+      "type": "string",
+      "readOnly": true
+    },
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "$ref": "./BusinessIdentifier.json"
+      },
+      "readOnly": true
+    },
+    "invoices_sent_this_month": {
+      "type": "string",
+      "readOnly": true
+    },
+    "monthly_invoice_limit": {
+      "type": "string",
+      "readOnly": true
+    }
+  },
+  "required": [
+    "apix_transfer_id",
+    "apix_transfer_key",
+    "apix_unique_id",
+    "can_invoice",
+    "country_config",
+    "created_at",
+    "demo_days_left",
+    "einvoicing_address",
+    "einvoicing_operator",
+    "has_business_address",
+    "has_tags",
+    "id",
+    "identifiers",
+    "invoices_sent_this_month",
+    "invoicing_tax_code",
+    "is_eligible_for_einvoicing",
+    "is_trialing",
+    "logo",
+    "monthly_invoice_limit",
+    "name",
+    "owner_email",
+    "owner_name",
+    "period_id",
+    "salaxy_account_id",
+    "salaxy_enabled",
+    "stripe_customer_id",
+    "stripe_subscription_id",
+    "subscription_plan",
+    "subscription_source",
+    "trial_days_left",
+    "trial_progress_percentage",
+    "updated_at",
+    "vat_period_id"
+  ]
+}

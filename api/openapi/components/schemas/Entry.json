@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was last updated."
+    },
+    "account": {
+      "type": "integer",
+      "description": "The account ID associated with this entry."
+    },
+    "account_name": {
+      "type": "string",
+      "readOnly": true,
+      "description": "The name of the account associated with this entry."
+    },
+    "account_number": {
+      "type": "string",
+      "readOnly": true,
+      "description": "The number of the account associated with this entry."
+    },
+    "amount": {
+      "type": "number",
+      "format": "float"
+    },
+    "is_debet": {
+      "type": "boolean",
+      "description": "Indicates whether this entry is a debit (True) or credit (False)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the entry, providing additional context or details."
+    },
+    "vat_code": {
+      "allOf": [
+        {
+          "$ref": "./VatCode5f1Enum.json"
+        }
+      ],
+      "description": "The VAT code of this entry.\n\n* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle",
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "vat_rate": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+      "description": "The VAT rate of this entry."
+    }
+  },
+  "required": [
+    "account_name",
+    "account_number",
+    "created_at",
+    "id",
+    "updated_at"
+  ]
+}

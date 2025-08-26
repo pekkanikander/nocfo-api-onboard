@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "y_tunnus",
+    "vat_code"
+  ],
+  "type": "string",
+  "description": "* `y_tunnus` - Y_TUNNUS\n* `vat_code` - VAT_CODE"
+}

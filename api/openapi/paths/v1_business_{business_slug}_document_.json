@@ -1,0 +1,208 @@
+{
+  "get": {
+    "operationId": "Documents - List",
+    "description": "This endpoints allows you to retrieve a list of all the company's documents and create new ones. It includes extensive filtering options and a search feature",
+    "summary": "Documents - List",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "account",
+        "schema": {
+          "type": "number"
+        },
+        "description": "Filter documents by account ID."
+      },
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "query",
+        "name": "contact",
+        "schema": {
+          "type": "number"
+        },
+        "description": "Filter documents by contact ID."
+      },
+      {
+        "in": "query",
+        "name": "date_from",
+        "schema": {
+          "type": "string",
+          "format": "date"
+        },
+        "description": "Filter documents from this date onwards. Date is inclusive."
+      },
+      {
+        "in": "query",
+        "name": "date_to",
+        "schema": {
+          "type": "string",
+          "format": "date"
+        },
+        "description": "Filter documents up to this date. Date is inclusive."
+      },
+      {
+        "in": "query",
+        "name": "expense",
+        "schema": {
+          "type": "boolean"
+        },
+        "description": "Filter documents that have expense entries."
+      },
+      {
+        "in": "query",
+        "name": "file",
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Filter documents by attachment ID."
+      },
+      {
+        "in": "query",
+        "name": "has_attachments",
+        "schema": {
+          "type": "boolean"
+        },
+        "description": "Filter documents that have attachments."
+      },
+      {
+        "in": "query",
+        "name": "income",
+        "schema": {
+          "type": "boolean"
+        },
+        "description": "Filter documents that have income entries."
+      },
+      {
+        "in": "query",
+        "name": "is_draft",
+        "schema": {
+          "type": "boolean"
+        },
+        "description": "Filter documents by draft status."
+      },
+      {
+        "in": "query",
+        "name": "is_flagged",
+        "schema": {
+          "type": "boolean"
+        },
+        "description": "Filter documents by flagged status."
+      },
+      {
+        "name": "page",
+        "required": false,
+        "in": "query",
+        "description": "A page number within the paginated result set.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "name": "page_size",
+        "required": false,
+        "in": "query",
+        "description": "Number of results to return per page.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "name": "search",
+        "required": false,
+        "in": "query",
+        "description": "A search term.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "tagged",
+        "schema": {
+          "type": "number"
+        },
+        "description": "Filter documents by user ID tagged in comments."
+      },
+      {
+        "in": "query",
+        "name": "tags",
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Filter documents by tag ID."
+      }
+    ],
+    "tags": [
+      "Documents",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PaginatedDocumentList.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "post": {
+    "operationId": "Documents - Create",
+    "description": "This endpoints allows you to retrieve a list of all the company's documents and create new ones. It includes extensive filtering options and a search feature",
+    "summary": "Documents - Create",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Documents",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/Document.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/Document.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/Document.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/Document.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "post": {
+    "operationId": "invoicing_invoice_actions_disable_recurrence_create",
+    "description": "Disables the recurrence of the invoice, preventing it from being automatically generated in the future.",
+    "summary": "Sales Invoice - Disable Recurrence",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "description": "No response body"
+      }
+    }
+  }
+}

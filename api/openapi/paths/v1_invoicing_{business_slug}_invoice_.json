@@ -1,0 +1,111 @@
+{
+  "get": {
+    "operationId": "Sales Invoices - List",
+    "description": "This endpoint allows you to retrieve a list of all the company's invoices and create new ones. Invoices can be used to bill customers for products or services provided by the company.",
+    "summary": "Sales Invoices - List",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "name": "page",
+        "required": false,
+        "in": "query",
+        "description": "A page number within the paginated result set.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "name": "page_size",
+        "required": false,
+        "in": "query",
+        "description": "Number of results to return per page.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "name": "search",
+        "required": false,
+        "in": "query",
+        "description": "A search term.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PaginatedInvoiceList.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "post": {
+    "operationId": "Sales Invoices - Create",
+    "description": "This endpoint allows you to retrieve a list of all the company's invoices and create new ones. Invoices can be used to bill customers for products or services provided by the company.",
+    "summary": "Sales Invoices - Create",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/Invoice.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/Invoice.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/Invoice.json"
+          }
+        }
+      },
+      "required": true
+    },
+    "responses": {
+      "201": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/Invoice.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  }
+}

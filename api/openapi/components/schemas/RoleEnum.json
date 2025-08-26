@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "ADMIN",
+    "EDITOR",
+    "READ_ONLY"
+  ],
+  "type": "string",
+  "description": "* `ADMIN` - Admin\n* `EDITOR` - Normaali käyttäjä\n* `READ_ONLY` - Vain lukuoikeus"
+}

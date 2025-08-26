@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "EMAIL",
+    "EINVOICE"
+  ],
+  "type": "string",
+  "description": "* `EMAIL` - Email\n* `EINVOICE` - Einvoice"
+}

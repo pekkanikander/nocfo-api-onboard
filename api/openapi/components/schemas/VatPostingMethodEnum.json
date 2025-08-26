@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "NET",
+    "SPLIT"
+  ],
+  "type": "string",
+  "description": "* `NET` - NET\n* `SPLIT` - SPLIT"
+}

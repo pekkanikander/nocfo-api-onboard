@@ -1,0 +1,34 @@
+{
+  "post": {
+    "operationId": "invoicing_invoice_send_create",
+    "description": "Sends the invoice to the receiver via the specified delivery method. The delivery method can be email or other configured methods.",
+    "summary": "Sales Invoice - Send",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "description": "No response body"
+      }
+    }
+  }
+}

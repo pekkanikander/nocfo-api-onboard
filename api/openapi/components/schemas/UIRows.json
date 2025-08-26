@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "properties": {
+    "account_name": {
+      "type": "string",
+      "readOnly": true
+    },
+    "account_number": {
+      "type": "string",
+      "readOnly": true
+    },
+    "vat_code": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "vat_rate": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+      "readOnly": true
+    },
+    "is_debet": {
+      "type": "boolean",
+      "readOnly": true
+    },
+    "amount": {
+      "type": "number",
+      "format": "float",
+      "readOnly": true
+    }
+  },
+  "required": [
+    "account_name",
+    "account_number",
+    "amount",
+    "is_debet",
+    "vat_code",
+    "vat_rate"
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "readOnly": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true,
+      "description": "The date and time when the record was last updated."
+    },
+    "customer_id": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "type": {
+      "$ref": "./ContactTypeEnum.json"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "name_aliases": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 256
+      },
+      "maxItems": 10
+    },
+    "contact_business_id": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 16
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 8192
+    },
+    "is_invoicing_enabled": {
+      "type": "boolean"
+    },
+    "invoicing_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "maxLength": 254
+    },
+    "invoicing_einvoice_address": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "invoicing_einvoice_operator": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "invoicing_tax_code": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 16
+    },
+    "invoicing_street": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 64
+    },
+    "invoicing_city": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "invoicing_postal_code": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 8
+    },
+    "invoicing_country": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 32
+    },
+    "invoicing_language": {
+      "$ref": "./InvoicingLanguageEnum.json"
+    },
+    "can_be_invoiced": {
+      "type": "string",
+      "readOnly": true
+    },
+    "can_be_invoiced_via_email": {
+      "type": "string",
+      "readOnly": true
+    },
+    "can_be_invoiced_via_einvoice": {
+      "type": "string",
+      "readOnly": true
+    }
+  }
+}

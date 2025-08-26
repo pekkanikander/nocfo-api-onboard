@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "KEEP",
+    "ROLL"
+  ],
+  "type": "string",
+  "description": "* `KEEP` - Keep\n* `ROLL` - Roll"
+}

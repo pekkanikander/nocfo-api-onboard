@@ -1,0 +1,133 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "NOCFO API Documentation",
+    "version": "",
+    "x-logo": {
+      "url": "https://cdn.nocfo.io/logos/nocfo-black.svg",
+      "backgroundColor": "#f2f4f7",
+      "altText": "NOCFO logo",
+      "href": "https://nocfo.io"
+    },
+    "description": "Get help and discuss in our [Slack community](https://nocfocommunity.slack.com) 👉 [**Click here to join**](https://join.slack.com/t/nocfocommunity/shared_invite/zt-3b7i1rcfp-4JmhWVTqGxzireppzCwA)\n\n### Welcome!\n\nWelcome to the NOCFO API Documentation! The **NOCFO API** provides secure, programmatic access to the core functionalities of the NOCFO platform, enabling seamless integration with your own applications and workflows.\nWith these endpoints, you can interact with a variety of features including **bookkeeping**, **invoicing**, and other financial operations.\n\nOur API is built to be reliable, scalable, and developer-friendly, with consistent request/response structures and clear authentication methods. Whether you are building new integrations, automating repetitive tasks, or syncing data between systems, the NOCFO API offers the tools you need.\n\n### Available Resources\n\nWe provide both **testing** and **production** environments so you can safely develop and validate your integration before going live.\n\n- **Testing environment**: [https://api-tst.nocfo.io/docs](https://api-tst.nocfo.io/docs)\nUse this environment for development and testing purposes. Data here is isolated and does not affect production systems.\n\n- **Production environment**: [https://api-prd.nocfo.io/docs](https://api-prd.nocfo.io/docs)\nUse this environment for live, real-world operations once your integration is fully tested.\n\n### Authentication\n\nThe NOCFO API uses **token-based authentication** to ensure secure access.\nTo authenticate requests, you must include a valid **Personal Access Token (PAT)** in the `Authorization` header:\n\n```http\nAuthorization: Token <your_token_here>\n```\n\n#### Key points to note:\n\n- Tokens are user-specific. Any action performed with a token will be attributed to the user who created it.\n- Keep your token secure — treat it like a password. Do not share it or expose it in public repositories.\n- If a token is compromised, it should be revoked immediately from your account settings.\n\n#### Obtaining Access Tokens\n\nYou can generate and manage your access tokens directly in the NOCFO web application under Account Settings.\n- Testing environment: https://login-tst.nocfo.io/auth/tokens/\n- Production environment: https://login.nocfo.io/auth/tokens/\n\n### Developer Support and Community\n\nJoin our [NOCFO Slack Community](https://nocfocommunity.slack.com) to connect with other developers, share best practices, and get direct support from our team.\nIn the Slack workspace, you can:\n- Ask questions about API usage and integrations\n- Get quick feedback and troubleshooting help\n- Share your use cases and solutions with others\n\n[**Click here to join**](https://join.slack.com/t/nocfocommunity/shared_invite/zt-3b7i1rcfp-4JmhWVTqGxzireppzCwA)"
+  },
+  "paths": {
+    "/v1/business/": {
+      "$ref": "paths/v1_business_.json"
+    },
+    "/v1/business/{business_slug}/": {
+      "$ref": "paths/v1_business_{business_slug}_.json"
+    },
+    "/v1/business/{business_slug}/account/": {
+      "$ref": "paths/v1_business_{business_slug}_account_.json"
+    },
+    "/v1/business/{business_slug}/account/{account_id}/": {
+      "$ref": "paths/v1_business_{business_slug}_account_{account_id}_.json"
+    },
+    "/v1/business/{business_slug}/contacts/": {
+      "$ref": "paths/v1_business_{business_slug}_contacts_.json"
+    },
+    "/v1/business/{business_slug}/contacts/{contact_id}/": {
+      "$ref": "paths/v1_business_{business_slug}_contacts_{contact_id}_.json"
+    },
+    "/v1/business/{business_slug}/document/": {
+      "$ref": "paths/v1_business_{business_slug}_document_.json"
+    },
+    "/v1/business/{business_slug}/document/{document_id}/": {
+      "$ref": "paths/v1_business_{business_slug}_document_{document_id}_.json"
+    },
+    "/v1/business/{business_slug}/document/{document_id}/entry/": {
+      "$ref": "paths/v1_business_{business_slug}_document_{document_id}_entry_.json"
+    },
+    "/v1/business/{business_slug}/file_upload/": {
+      "$ref": "paths/v1_business_{business_slug}_file_upload_.json"
+    },
+    "/v1/business/{business_slug}/files/": {
+      "$ref": "paths/v1_business_{business_slug}_files_.json"
+    },
+    "/v1/business/{business_slug}/files/{file_id}/": {
+      "$ref": "paths/v1_business_{business_slug}_files_{file_id}_.json"
+    },
+    "/v1/business/{business_slug}/tags/": {
+      "$ref": "paths/v1_business_{business_slug}_tags_.json"
+    },
+    "/v1/business/{business_slug}/tags/{tag_id}/": {
+      "$ref": "paths/v1_business_{business_slug}_tags_{tag_id}_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/accept/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_actions_accept_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/credit_loss/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_actions_credit_loss_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/disable_recurrence/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_actions_disable_recurrence_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/paid/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_actions_paid_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/unpaid/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_actions_unpaid_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/delivery_methods/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_delivery_methods_.json"
+    },
+    "/v1/invoicing/{business_slug}/invoice/{invoice_id}/send/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_invoice_{invoice_id}_send_.json"
+    },
+    "/v1/invoicing/{business_slug}/product/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_product_.json"
+    },
+    "/v1/invoicing/{business_slug}/product/{product_id}/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_product_{product_id}_.json"
+    },
+    "/v1/invoicing/{business_slug}/purchase_invoice/{purchase_invoice_id}/": {
+      "$ref": "paths/v1_invoicing_{business_slug}_purchase_invoice_{purchase_invoice_id}_.json"
+    },
+    "/v1/user/": {
+      "$ref": "paths/v1_user_.json"
+    }
+  },
+  "x-tagGroups": [
+    {
+      "name": "General",
+      "tags": [
+        "Businesses",
+        "User"
+      ]
+    },
+    {
+      "name": "Bookkeeping",
+      "tags": [
+        "Documents",
+        "Files",
+        "Accounts",
+        "Tags"
+      ]
+    },
+    {
+      "name": "Invoicing",
+      "tags": [
+        "Contacts",
+        "Products",
+        "Invoices"
+      ]
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://api-tst.nocfo.io",
+      "description": "NOCFO API - Testing environment"
+    },
+    {
+      "url": "https://api-prd.nocfo.io",
+      "description": "NOCFO API - Production"
+    }
+  ]
+}

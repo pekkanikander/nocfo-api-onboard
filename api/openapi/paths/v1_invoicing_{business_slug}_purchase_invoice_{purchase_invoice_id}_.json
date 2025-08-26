@@ -1,0 +1,190 @@
+{
+  "get": {
+    "operationId": "Purchase Invoice - Retrieve",
+    "description": "This endpoint allows you to retrieve, update, or delete a specific purchase invoice.",
+    "summary": "Purchase Invoice - Retrieve",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "purchase_invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PurchaseInvoice.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "put": {
+    "operationId": "Purchase Invoice - Update",
+    "description": "This endpoint allows you to retrieve, update, or delete a specific purchase invoice.",
+    "summary": "Purchase Invoice - Update",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "purchase_invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/PurchaseInvoice.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/PurchaseInvoice.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/PurchaseInvoice.json"
+          }
+        }
+      },
+      "required": true
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PurchaseInvoice.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "patch": {
+    "operationId": "Purchase Invoice - Partial Update",
+    "description": "This endpoint allows you to retrieve, update, or delete a specific purchase invoice.",
+    "summary": "Purchase Invoice - Partial Update",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "purchase_invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedPurchaseInvoice.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedPurchaseInvoice.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedPurchaseInvoice.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PurchaseInvoice.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "delete": {
+    "operationId": "Purchase Invoice - Delete",
+    "description": "This endpoint allows you to retrieve, update, or delete a specific purchase invoice.",
+    "summary": "Purchase Invoice - Delete",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "purchase_invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "204": {
+        "description": "No response body"
+      }
+    }
+  }
+}

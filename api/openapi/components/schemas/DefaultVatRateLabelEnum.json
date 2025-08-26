@@ -1,0 +1,10 @@
+{
+  "enum": [
+    "standard",
+    "reduced_a",
+    "reduced_b",
+    "zero"
+  ],
+  "type": "string",
+  "description": "* `standard` - STANDARD\n* `reduced_a` - REDUCED_A\n* `reduced_b` - REDUCED_B\n* `zero` - ZERO"
+}

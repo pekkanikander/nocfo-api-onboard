@@ -1,0 +1,34 @@
+{
+  "get": {
+    "operationId": "invoicing_invoice_delivery_methods_retrieve",
+    "description": "Retrieves the available delivery methods for sending the invoice. This includes email and other configured methods.",
+    "summary": "Sales Invoice - Get Delivery Methods",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "path",
+        "name": "invoice_id",
+        "schema": {
+          "type": "integer"
+        },
+        "required": true
+      }
+    ],
+    "tags": [
+      "Invoices",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "description": "No response body"
+      }
+    }
+  }
+}

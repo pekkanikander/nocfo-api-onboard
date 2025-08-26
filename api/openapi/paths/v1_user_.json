@@ -1,0 +1,103 @@
+{
+  "get": {
+    "operationId": "Current User - Retrieve",
+    "description": "This endpoint returns information for the currently logged in user.",
+    "summary": "Current User - Retrieve",
+    "tags": [
+      "User",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/CurrentUser.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "put": {
+    "operationId": "Current User - Update",
+    "description": "This endpoint returns information for the currently logged in user.",
+    "summary": "Current User - Update",
+    "tags": [
+      "User",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/CurrentUser.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/CurrentUser.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/CurrentUser.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/CurrentUser.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "patch": {
+    "operationId": "Current User - Partial Update",
+    "description": "This endpoint returns information for the currently logged in user.",
+    "summary": "Current User - Partial Update",
+    "tags": [
+      "User",
+      "MCP"
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedCurrentUser.json"
+          }
+        },
+        "application/x-www-form-urlencoded": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedCurrentUser.json"
+          }
+        },
+        "multipart/form-data": {
+          "schema": {
+            "$ref": "../components/schemas/PatchedCurrentUser.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/CurrentUser.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  }
+}

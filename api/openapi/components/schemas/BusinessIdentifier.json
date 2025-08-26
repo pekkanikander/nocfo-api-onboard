@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "$ref": "./BusinessIdentifierTypeEnum.json"
+    },
+    "value": {
+      "type": "string",
+      "maxLength": 64
+    }
+  },
+  "required": [
+    "type",
+    "value"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "enum": [
+    "ASS",
+    "ASS_DEP",
+    "ASS_VAT",
+    "ASS_REC",
+    "ASS_PAY",
+    "ASS_DUE",
+    "LIA",
+    "LIA_EQU",
+    "LIA_PRE",
+    "LIA_DUE",
+    "LIA_DEB",
+    "LIA_ACC",
+    "LIA_VAT",
+    "REV",
+    "REV_SAL",
+    "REV_NO",
+    "EXP",
+    "EXP_DEP",
+    "EXP_NO",
+    "EXP_50",
+    "EXP_TAX",
+    "EXP_TAX_PRE"
+  ],
+  "type": "string",
+  "description": "* `ASS` - Vastaavaa\n* `ASS_DEP` - Poistokelpoinen omaisuus\n* `ASS_VAT` - Arvonlisäverosaatava\n* `ASS_REC` - Siirtosaamiset\n* `ASS_PAY` - Pankkitili / käteisvarat\n* `ASS_DUE` - Myyntisaatavat\n* `LIA` - Vastattavaa\n* `LIA_EQU` - Oma pääoma\n* `LIA_PRE` - Edellisten tilikausien voitto\n* `LIA_DUE` - Ostovelat\n* `LIA_DEB` - Velat\n* `LIA_ACC` - Siirtovelat\n* `LIA_VAT` - Arvonlisäverovelka\n* `REV` - Tulot\n* `REV_SAL` - Liikevaihtotulot (myynti)\n* `REV_NO` - Verottomat tulot\n* `EXP` - Menot\n* `EXP_DEP` - Poistot\n* `EXP_NO` - Vähennyskelvottomat menot\n* `EXP_50` - Puoliksi vähennyskelpoiset menot\n* `EXP_TAX` - Verotili\n* `EXP_TAX_PRE` - Ennakkoverot"
+}

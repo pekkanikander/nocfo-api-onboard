@@ -1,0 +1,88 @@
+{
+  "get": {
+    "operationId": "Files - List",
+    "description": "This endpoints allows you to retrieve a list of all the company's files.",
+    "summary": "Files - List",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "business_slug",
+        "schema": {
+          "type": "string"
+        },
+        "required": true
+      },
+      {
+        "in": "query",
+        "name": "folder",
+        "schema": {
+          "type": "number"
+        }
+      },
+      {
+        "in": "query",
+        "name": "is_used",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "page",
+        "required": false,
+        "in": "query",
+        "description": "A page number within the paginated result set.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "name": "page_size",
+        "required": false,
+        "in": "query",
+        "description": "Number of results to return per page.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "root",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "search",
+        "required": false,
+        "in": "query",
+        "description": "A search term.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "tags",
+        "schema": {
+          "type": "number"
+        }
+      }
+    ],
+    "tags": [
+      "Files",
+      "MCP"
+    ],
+    "responses": {
+      "200": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/PaginatedAttachmentListList.json"
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  }
+}
