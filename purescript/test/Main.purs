@@ -3,6 +3,7 @@ module Test.Main where
 import Prelude
 import Effect (Effect)
 
+import Types as T
 import Test.Spec (describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.Reporter.Console (consoleReporter)
@@ -16,12 +17,12 @@ main = runSpecAndExitProcess [ consoleReporter ] do
         true `shouldEqual` true
 
       it "should create a Business with all required fields" do
-        let business = Business 1 "holotropic" "Holotropic Oy" "1234567-8" "FI_YHD"
-        business.id `shouldEqual` 1
-        business.slug `shouldEqual` "holotropic"
-        business.name `shouldEqual` "Holotropic Oy"
-        business.businessId `shouldEqual` "1234567-8"
-        business.form `shouldEqual` "FI_YHD"
+        let business = T.Business 1 "holotropic" "Holotropic Oy" "1234567-8" "FI_YHD"
+        T.id business `shouldEqual` 1
+        T.slug business `shouldEqual` "holotropic"
+        T.name business `shouldEqual` "Holotropic Oy"
+        T.businessId business `shouldEqual` "1234567-8"
+        T.form business `shouldEqual` "FI_YHD"
 
     describe "Accounting" do
       it "should calculate total assets correctly" do

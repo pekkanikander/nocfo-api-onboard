@@ -2,21 +2,28 @@
   [
     "NOCFO PureScript Accounting System Accounting should calculate total assets correctly",
     {
-      "timestamp": "1756292227996.0",
+      "timestamp": "1756292745942.0",
       "success": true
     }
   ],
   [
     "NOCFO PureScript Accounting System Streams should filter accounts by type",
     {
-      "timestamp": "1756292227996.0",
+      "timestamp": "1756292745942.0",
+      "success": true
+    }
+  ],
+  [
+    "NOCFO PureScript Accounting System Types should create a Business with all required fields",
+    {
+      "timestamp": "1756292745942.0",
       "success": true
     }
   ],
   [
     "NOCFO PureScript Accounting System Types should have valid account type constructors",
     {
-      "timestamp": "1756292227996.0",
+      "timestamp": "1756292745942.0",
       "success": true
     }
   ]
