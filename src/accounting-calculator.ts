@@ -1,27 +1,29 @@
-// Simple Accounting Balance Calculator
-// Demonstrates double-entry bookkeeping logic
+// Stream-Ready Accounting Calculator
+// Works with any stream implementation: arrays, async generators, Effect streams, etc.
 
-import { Account, AccountType } from '../types/index.js';
+import { Account } from '../types/index.js';
+import { Stream } from './stream-abstraction.js';
 
 /**
- * Simple accounting balance calculator
- * Demonstrates basic double-entry bookkeeping principles
+ * Stream-ready accounting calculator that works with any stream implementation
+ * Truly type-agnostic: works with arrays, async generators, Effect streams, etc.
  */
 export class AccountingCalculator {
-
   /**
-   * Calculate total assets (sum of all ASS* accounts)
+   * Calculate total assets from any stream of accounts
+   * Works with arrays, streams, async generators, Effect streams, etc.
    */
-  static calculateTotalAssets(accounts: Account[]): number {
+  static async calculateTotalAssets(accounts: Stream<Account>): Promise<number> {
     return accounts
       .filter(account => account.type.startsWith('ASS'))
       .reduce((sum, account) => sum + account.balance, 0);
   }
 
   /**
-   * Calculate total liabilities (sum of all LIA* accounts EXCEPT equity accounts)
+   * Calculate total liabilities from any stream of accounts
+   * Excludes equity accounts (LIA_EQU, LIA_PRE)
    */
-  static calculateTotalLiabilities(accounts: Account[]): number {
+  static async calculateTotalLiabilities(accounts: Stream<Account>): Promise<number> {
     return accounts
       .filter(account => account.type.startsWith('LIA') &&
                         account.type !== 'LIA_EQU' &&
@@ -30,121 +32,129 @@ export class AccountingCalculator {
   }
 
   /**
-   * Calculate total equity (sum of LIA_EQU and LIA_PRE accounts)
+   * Calculate total equity from any stream of accounts
+   * Includes equity accounts (LIA_EQU, LIA_PRE)
    */
-  static calculateTotalEquity(accounts: Account[]): number {
+  static async calculateTotalEquity(accounts: Stream<Account>): Promise<number> {
     return accounts
-      .filter(account => account.type === 'LIA_EQU' || account.type === 'LIA_PRE')
+      .filter(account => account.type.startsWith('LIA_EQU') || account.type.startsWith('LIA_PRE'))
       .reduce((sum, account) => sum + account.balance, 0);
   }
 
   /**
-   * Calculate total revenue (sum of all REV* accounts)
+   * Verify the fundamental accounting equation: Assets = Liabilities + Equity
+   * Works with any stream of accounts
    */
-  static calculateTotalRevenue(accounts: Account[]): number {
+  static async verifyAccountingEquation(accounts: Stream<Account>): Promise<{
+    assets: number;
+    liabilities: number;
+    equity: number;
+    difference: number;
+    isBalanced: boolean;
+  }> {
+    const [assets, liabilities, equity] = await Promise.all([
+      this.calculateTotalAssets(accounts),
+      this.calculateTotalLiabilities(accounts),
+      this.calculateTotalEquity(accounts)
+    ]);
+
+    const difference = assets - (liabilities + equity);
+    const isBalanced = Math.abs(difference) < 0.01; // Allow for small rounding errors
+
+    return { assets, liabilities, equity, difference, isBalanced };
+  }
+
+  /**
+   * Calculate total revenue from any stream of accounts
+   */
+  static async calculateTotalRevenue(accounts: Stream<Account>): Promise<number> {
     return accounts
       .filter(account => account.type.startsWith('REV'))
       .reduce((sum, account) => sum + account.balance, 0);
   }
 
   /**
-   * Calculate total expenses (sum of all EXP* accounts)
+   * Calculate total expenses from any stream of accounts
    */
-  static calculateTotalExpenses(accounts: Account[]): number {
+  static async calculateTotalExpenses(accounts: Stream<Account>): Promise<number> {
     return accounts
       .filter(account => account.type.startsWith('EXP'))
       .reduce((sum, account) => sum + account.balance, 0);
   }
 
   /**
-   * Calculate net income (Revenue - Expenses)
+   * Calculate net income: Revenue - Expenses
    */
-  static calculateNetIncome(accounts: Account[]): number {
-    const revenue = this.calculateTotalRevenue(accounts);
-    const expenses = this.calculateTotalExpenses(accounts);
+  static async calculateNetIncome(accounts: Stream<Account>): Promise<number> {
+    const [revenue, expenses] = await Promise.all([
+      this.calculateTotalRevenue(accounts),
+      this.calculateTotalExpenses(accounts)
+    ]);
     return revenue - expenses;
   }
 
   /**
-   * Verify the fundamental accounting equation: Assets = Liabilities + Equity
+   * Get account summary by type from any stream
+   * Returns a map of account types to their total balances
    */
-  static verifyAccountingEquation(accounts: Account[]): {
-    assets: number;
-    liabilities: number;
-    equity: number;
-    difference: number;
-    isBalanced: boolean;
-  } {
-    const assets = this.calculateTotalAssets(accounts);
-    const liabilities = this.calculateTotalLiabilities(accounts);
-    const equity = this.calculateTotalEquity(accounts);
+  static async getAccountSummaryByType(accounts: Stream<Account>): Promise<Map<string, number>> {
+    const summary = new Map<string, number>();
 
-    const difference = assets - (liabilities + equity);
-    const isBalanced = Math.abs(difference) < 0.01; // Allow for small rounding errors
-
-    return {
-      assets,
-      liabilities,
-      equity,
-      difference,
-      isBalanced
-    };
-  }
-
-  /**
-   * Get accounts grouped by type for analysis
-   */
-  static groupAccountsByType(accounts: Account[]): Record<AccountType, Account[]> {
-    const grouped: Partial<Record<AccountType, Account[]>> = {};
-
-    accounts.forEach(account => {
-      if (!grouped[account.type]) {
-        grouped[account.type] = [];
-      }
-      grouped[account.type]!.push(account);
+    await accounts.forEach(account => {
+      const currentTotal = summary.get(account.type) || 0;
+      summary.set(account.type, currentTotal + account.balance);
     });
 
-    return grouped as Record<AccountType, Account[]>;
+    return summary;
   }
 
   /**
-   * Calculate working capital (Current Assets - Current Liabilities)
-   * Note: This is a simplified version - in practice you'd need to identify
-   * which accounts are "current" vs "long-term"
+   * Filter accounts by type from any stream
+   * Returns a new stream with accounts matching the type pattern
    */
-  static calculateWorkingCapital(accounts: Account[]): number {
-    // For this example, we'll consider ASS_PAY and ASS_DUE as current assets
-    // and LIA_DUE as current liabilities
-    const currentAssets = accounts
-      .filter(account => account.type === 'ASS_PAY' || account.type === 'ASS_DUE')
-      .reduce((sum, account) => sum + account.balance, 0);
-
-    const currentLiabilities = accounts
-      .filter(account => account.type === 'LIA_DUE')
-      .reduce((sum, account) => sum + account.balance, 0);
-
-    return currentAssets - currentLiabilities;
+  static filterAccountsByType(accounts: Stream<Account>, typePattern: string): Stream<Account> {
+    return accounts.filter(account => account.type.startsWith(typePattern));
   }
 
   /**
-   * Generate a simple balance sheet summary
+   * Count accounts by type from any stream
+   * Returns a map of account types to their counts
    */
-  static generateBalanceSheetSummary(accounts: Account[]): string {
-    const equation = this.verifyAccountingEquation(accounts);
-    const workingCapital = this.calculateWorkingCapital(accounts);
+  static async countAccountsByType(accounts: Stream<Account>): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
 
-    return `
-=== BALANCE SHEET SUMMARY ===
-Assets: ${equation.assets.toFixed(2)}
-Liabilities: ${equation.liabilities.toFixed(2)}
-Equity: ${equation.equity.toFixed(2)}
-Working Capital: ${workingCapital.toFixed(2)}
+    await accounts.forEach(account => {
+      const currentCount = counts.get(account.type) || 0;
+      counts.set(account.type, currentCount + 1);
+    });
 
-Fundamental Equation Check:
-Assets = Liabilities + Equity
-${equation.assets.toFixed(2)} = ${(equation.liabilities + equation.equity).toFixed(2)}
-Difference: ${equation.difference.toFixed(2)}
-Balanced: ${equation.isBalanced ? '✅ YES' : '❌ NO'}
-    `.trim();
+    return counts;
+  }
+
+  /**
+   * Get all accounts as an array (useful for debugging/testing)
+   */
+  static async getAccountsArray(accounts: Stream<Account>): Promise<Account[]> {
+    return accounts.toArray();
+  }
+
+  /**
+   * Process accounts in chunks (useful for large datasets)
+   */
+  static async processAccountsInChunks<T>(
+    accounts: Stream<Account>,
+    chunkSize: number,
+    processor: (chunk: Account[]) => Promise<T>
+  ): Promise<T[]> {
+    const allAccounts = await accounts.toArray();
+    const results: T[] = [];
+
+    for (let i = 0; i < allAccounts.length; i += chunkSize) {
+      const chunk = allAccounts.slice(i, i + chunkSize);
+      const result = await processor(chunk);
+      results.push(result);
+    }
+
+    return results;
   }
 }

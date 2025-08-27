@@ -14,7 +14,8 @@
     "test:types": "tsx tests/test-types.ts",
     "test:calculator": "tsx tests/test-calculator.ts",
     "test:api": "tsx tests/test-api-client.ts",
-    "test:all": "pnpm test:types && pnpm test:calculator && pnpm test:api",
+    "test:streams": "tsx tests/test-streams.ts",
+    "test:all": "pnpm test:types && pnpm test:calculator && pnpm test:streams",
     "build": "tsc",
     "dev": "tsx --watch"
   },
