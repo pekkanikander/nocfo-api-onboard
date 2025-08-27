@@ -1,23 +1,14 @@
 // Basic NOCFO API Client
 // Step 1: Simple client that can fetch businesses
 
+import { Business, BusinessListItem, PaginatedBusinessList } from '../types/index.js';
+
 /**
  * Basic configuration for the NOCFO API client
  */
 export interface NocfoApiConfig {
   baseUrl: string;
   token: string;
-}
-
-/**
- * Business entity from the NOCFO API
- * We'll expand this as we learn more about the API
- */
-export interface Business {
-  id: number;
-  slug: string;
-  name: string;
-  // Add more fields as we discover them
 }
 
 /**
@@ -52,15 +43,18 @@ export class NocfoApiClient {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: PaginatedBusinessList = await response.json();
 
-      // For now, we'll assume the API returns a structure like:
-      // { results: Business[], count: number, next: string | null, previous: string | null }
-      // We'll refine this as we see the actual response
+      // The API returns a paginated structure with results array
       if (data.results && Array.isArray(data.results)) {
-        return data.results;
+        // For now, we'll fetch full details for each business
+        // Later we can optimize this with batch operations
+        const fullBusinesses = await Promise.all(
+          data.results.map(businessItem => this.getBusiness(businessItem.slug))
+        );
+        return fullBusinesses;
       } else {
-        // If the API returns businesses directly
+        // Fallback: if the API returns businesses directly
         return Array.isArray(data) ? data : [];
       }
     } catch (error) {
@@ -90,10 +84,39 @@ export class NocfoApiClient {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const business = await response.json();
+      const business: Business = await response.json();
       return business;
     } catch (error) {
       console.error(`Error fetching business ${slug}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get just the business list without full details
+   * This is more efficient when you only need basic info
+   */
+  async getBusinessList(): Promise<BusinessListItem[]> {
+    const url = `${this.config.baseUrl}/v1/business/`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Token ${this.config.token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: PaginatedBusinessList = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.error('Error fetching business list:', error);
       throw error;
     }
   }
