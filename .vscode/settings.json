@@ -10,7 +10,7 @@
         "baseUrl": "http://127.0.0.1:4011",
       },
       "nocfo": {
-      "baseUrl": "https://api-tst.nocfo.io/v1",
+      "baseUrl": "https://api-tst.nocfo.io",
     },
   }
 }

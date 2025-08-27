@@ -1,11 +1,8 @@
 # 00-smoke.http
 
 @token = {{$processEnv NOCFO_API_TOKEN}}
-# Whomai
-GET https://httpbin.org/anything
-X-Token-Seen-By-Client: {{token}}
 
 ### Business
-GET {{baseUrl}}/business/
+GET {{baseUrl}}/vi/business/
 Authorization: Token {{token}}
 Accept: application/json

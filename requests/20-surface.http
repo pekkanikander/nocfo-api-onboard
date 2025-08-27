@@ -1,0 +1,34 @@
+@token = {{$processEnv NOCFO_API_TOKEN}}
+
+### Bootstrap: discover business_slug (run this first)
+# @name listBusinesses
+GET {{baseUrl}}/v1/business/
+Authorization: Token {{token}}
+Accept: application/json
+page_size: 5
+
+@business_slug = {{listBusinesses.response.body.$.results[1].slug}}
+
+### Accounts (paginated, filtered small)
+GET {{baseUrl}}/v1/business/{{business_slug}}/account/
+Authorization: Token {{token}}
+Accept: application/json
+page_size: 5
+
+### Contacts
+GET {{baseUrl}}/v1/business/{{business_slug}}/contacts/
+Authorization: Token {{token}}
+Accept: application/json
+page_size: 5
+
+### Tags
+GET {{baseUrl}}/v1/business/{{business_slug}}/tags/
+Authorization: Token {{token}}
+Accept: application/json
+page_size: 5
+
+### Documents (narrow date range if it exists in your data)
+GET {{baseUrl}}/v1/business/{{business_slug}}/document/
+Authorization: Token {{token}}
+Accept: application/json
+page_size: 5

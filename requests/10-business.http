@@ -1,0 +1,17 @@
+@token = {{$processEnv NOCFO_API_TOKEN}}
+
+# @name listBusinesses
+GET {{baseUrl}}/v1/business/
+Authorization: Token {{token}}
+Accept: application/json
+page_size: 5
+
+###
+# Pick the first business slug from the previous response.
+# Adjust the JSONPath after you inspect the payload shape.
+@business_slug = {{listBusinesses.response.body.$.results[1].slug}}
+
+### Sanity-check the slug
+GET {{baseUrl}}/v1/business/{{business_slug}}/
+Authorization: Token {{token}}
+Accept: application/json
