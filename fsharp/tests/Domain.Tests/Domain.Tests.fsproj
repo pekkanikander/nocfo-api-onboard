@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Domain\Domain.fsproj" />
+    <ProjectReference Include="..\..\src\Accounting.Api\Accounting.Api.fsproj" />
   </ItemGroup>
 
 </Project>

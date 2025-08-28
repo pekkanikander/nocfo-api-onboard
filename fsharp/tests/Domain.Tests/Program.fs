@@ -1,7 +1,9 @@
 ﻿module Domain.Tests
 
+open System
 open Expecto
 open FsCheck
+open Accounting.Api
 
 [<Tests>]
 let tests =
@@ -35,6 +37,25 @@ let tests =
                 Expect.equal Domain.AccountType.REV Domain.AccountType.REV "REV should equal REV"
                 Expect.equal Domain.AccountType.EXP Domain.AccountType.EXP "EXP should equal EXP"
         ]
+    ]
+
+[<Tests>]
+let apiTests =
+    testList "API Client" [
+                        testCase "should stream businesses from API client" <| fun _ ->
+            let apiToken = Environment.GetEnvironmentVariable("NOCFO_API_TOKEN")
+            if String.IsNullOrEmpty(apiToken) then
+                failtest "NOCFO_API_TOKEN environment variable not set"
+
+            let client = NocfoApiClient(apiToken)
+            let businessStream = client.GetBusinessesStreamAsync() |> Async.RunSynchronously
+
+            // Convert stream to list for testing
+            let businesses = FSharp.Control.AsyncSeq.toListAsync businessStream |> Async.RunSynchronously
+
+            Expect.equal businesses.Length 2 "Should have 2 businesses"
+            Expect.equal businesses.[0].Name "Holotropic Breathwork Finland ry" "First business name should match"
+            Expect.equal businesses.[1].Name "Puhdas Koti Oy" "Second business name should match"
     ]
 
 [<EntryPoint>]
