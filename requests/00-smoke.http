@@ -3,6 +3,6 @@
 @token = {{$processEnv NOCFO_API_TOKEN}}
 
 ### Business
-GET {{baseUrl}}/vi/business/
+GET {{baseUrl}}/v1/business/
 Authorization: Token {{token}}
 Accept: application/json
