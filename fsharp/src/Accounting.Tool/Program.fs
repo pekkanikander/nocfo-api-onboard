@@ -6,7 +6,7 @@ let main argv =
     printfn "🚀 NOCFO Business Stream Tool"
     printfn "================================"
 
-        // Create API client using environment variable
+    // Create API client using environment variable
     let apiToken = Environment.GetEnvironmentVariable("NOCFO_API_TOKEN")
     if String.IsNullOrEmpty(apiToken) then
         printfn "❌ Error: NOCFO_API_TOKEN environment variable not set"

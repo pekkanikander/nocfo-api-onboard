@@ -1,0 +1,25 @@
+{
+  "runtime": "Net90",
+  "documentGenerator": {
+    "fromDocument": {
+      "url": "/Users/pnr/Documents/Holotropic/test/nocfo-api-onboard/api/openapi.json"
+    }
+  },
+  "codeGenerators": {
+    "openApiToCSharpClient": {
+      "className": "NocfoClient",
+      "namespace": "Nocfo.Generated",
+      "output": "fsharp-v4/nocfo-api-client/NocfoClient.cs",
+      "generateClientClasses": true,
+      "generateDtoTypes": true,
+      "injectHttpClient": true,
+      "useHttpClientCreationMethod": false,
+      "httpClientType": "System.Net.Http.HttpClient",
+      "generateOptionalParameters": true,
+      "generateResponseClasses": false,
+      "generateBaseUrlProperty": true,
+      "useBaseUrl": true,
+      "operationGenerationMode": "SingleClientFromOperationId"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Project reference to generated C# client library -->
+    <ProjectReference Include="nocfo-api-client/NocfoClient.csproj" />
+
+    <!-- Our minimal F# code -->
+    <Compile Include="src/Streams.fs" />
+    <Compile Include="src/Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AsyncSeq library for streaming -->
+    <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.0" />
+
+    <!-- For HttpClient and System.Net.Http -->
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+  </ItemGroup>
+
+</Project>

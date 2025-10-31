@@ -59,6 +59,30 @@ type Account = {
     UpdatedAt: string
 }
 
+// Balance calculation types
+type AccountCategory =
+    | Assets
+    | Liabilities
+    | Revenue
+    | Expenses
+
+type CategoryBalance = {
+    Category: AccountCategory
+    Total: float
+    AccountCount: int
+    LastUpdated: System.DateTime
+}
+
+type BusinessBalance = {
+    BusinessSlug: string
+    Assets: CategoryBalance
+    Liabilities: CategoryBalance
+    Revenue: CategoryBalance
+    Expenses: CategoryBalance
+    IsBalanced: bool
+    CalculatedAt: System.DateTime
+}
+
 // Factory functions
 module Business =
     let create id slug name businessId form = {
@@ -86,3 +110,35 @@ module Account =
         CreatedAt = createdAt
         UpdatedAt = updatedAt
     }
+
+module AccountType =
+    let toCategory accountType =
+        match accountType with
+        | ASS | ASS_DEP | ASS_VAT | ASS_REC | ASS_PAY | ASS_DUE -> Assets
+        | LIA | LIA_EQU | LIA_PRE | LIA_DUE | LIA_DEB | LIA_ACC | LIA_VAT -> Liabilities
+        | REV | REV_SAL | REV_NO -> Revenue
+        | EXP | EXP_DEP | EXP_NO | EXP_50 | EXP_TAX | EXP_TAX_PRE -> Expenses
+
+module BalanceCalculation =
+    let createCategoryBalance category total accountCount =
+        { Category = category; Total = total; AccountCount = accountCount; LastUpdated = System.DateTime.UtcNow }
+
+    let createBusinessBalance businessSlug assets liabilities revenue expenses =
+        let isBalanced =
+            // Basic accounting equation: Assets + Expenses = Liabilities + Revenue
+            // This is a simplified version - real accounting is more complex
+            abs((assets.Total + expenses.Total) - (liabilities.Total + revenue.Total)) < 0.01
+
+        { BusinessSlug = businessSlug
+          Assets = assets
+          Liabilities = liabilities
+          Revenue = revenue
+          Expenses = expenses
+          IsBalanced = isBalanced
+          CalculatedAt = System.DateTime.UtcNow }
+
+    let updateCategoryBalance (balance: CategoryBalance) (account: Account) =
+        { balance with
+            Total = balance.Total + account.Balance
+            AccountCount = balance.AccountCount + 1
+            LastUpdated = System.DateTime.UtcNow }
