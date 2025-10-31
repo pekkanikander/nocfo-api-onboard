@@ -67,6 +67,11 @@ In the best possible world, this would enable a genre of high-level open source 
   - As another example, the LLMs used tended to "forget" URL structure details, e.g. trailing slashes
 - The LLM assumptions about e.g. JSON response structures can be wrong
 
+### Tooling Insights (OpenAPI vs NSwag)
+- OpenAPI Generator (v7.16.0) does not provide an F# client generator; `fsharp-functions` is a server generator (Azure Functions), not suitable for client code in this project.
+- For F# client consumption, NSwag can generate a compact C# client (`NocfoClient.cs`) and DTOs which F# can reference directly, preserving minimalism.
+- NSwag’s default output is a single large C# file (~11k LOC) whose DTOs mirror the full schema (including optional params like `tags`), so we must isolate it in its own project/reference and accept that the generator exposes every field from the spec.
+
 In general, the LLM assistant needs to be vigilent about such details, as the learning sets don't seem to emphasise such vigilence enough.
 
 ### F# Strengths
