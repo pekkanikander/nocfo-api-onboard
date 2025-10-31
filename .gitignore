@@ -362,3 +362,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Hawaii generated
+hawaii-client/generated

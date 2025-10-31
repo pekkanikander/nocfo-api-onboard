@@ -12,5 +12,17 @@
       "nocfo": {
       "baseUrl": "https://api-tst.nocfo.io",
     },
+  },
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true,
+    "**/.vscode-test": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true,
+    "**/.vscode-test": true
   }
 }
