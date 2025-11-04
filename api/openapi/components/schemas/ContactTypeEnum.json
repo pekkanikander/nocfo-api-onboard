@@ -1,9 +1,0 @@
-{
-  "enum": [
-    "UNSET",
-    "PERSON",
-    "BUSINESS"
-  ],
-  "type": "string",
-  "description": "* `UNSET` - Ei asetettu\n* `PERSON` - Yksityishenkilö\n* `BUSINESS` - Yritys"
-}

@@ -1,9 +1,0 @@
-{
-  "enum": [
-    "OPEN",
-    "ACCEPTED",
-    "REJECTED"
-  ],
-  "type": "string",
-  "description": "* `OPEN` - Avoin\n* `ACCEPTED` - Hyväksytty\n* `REJECTED` - Hylätty"
-}

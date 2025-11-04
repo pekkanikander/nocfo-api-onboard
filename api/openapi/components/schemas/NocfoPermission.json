@@ -1,9 +1,0 @@
-{
-  "type": "object",
-  "properties": {
-    "initiate_payments": {
-      "type": "boolean",
-      "default": false
-    }
-  }
-}

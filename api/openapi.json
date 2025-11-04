@@ -3165,6 +3165,10 @@
                         "readOnly": true
                     },
                     "name_translations": {},
+                    "header_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
                     "header_path": {
                         "type": "array",
                         "items": {
@@ -3259,6 +3263,10 @@
                         "readOnly": true
                     },
                     "name_translations": {},
+                    "header_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
                     "header_path": {
                         "type": "array",
                         "items": {
@@ -3376,11 +3384,12 @@
                     "CURRENCY_CODE",
                     "INVOICE_DATE",
                     "INVOICE_DUE_DATE",
+                    "PAYMENT_REF",
                     "RECEIPT_DATE",
                     "TOTAL_AMOUNT"
                 ],
                 "type": "string",
-                "description": "* `ATTACHMENT_TYPE` - Liitteen tyyppi\n* `CONTACT_NAME` - Kontaktin nimi\n* `CURRENCY_CODE` - Valuutta\n* `INVOICE_DATE` - Laskun päivämäärä\n* `INVOICE_DUE_DATE` - Laskun eräpäivä\n* `RECEIPT_DATE` - Kuitin päivämäärä\n* `TOTAL_AMOUNT` - Summa"
+                "description": "* `ATTACHMENT_TYPE` - Liitteen tyyppi\n* `CONTACT_NAME` - Kontaktin nimi\n* `CURRENCY_CODE` - Valuutta\n* `INVOICE_DATE` - Laskun päivämäärä\n* `INVOICE_DUE_DATE` - Laskun eräpäivä\n* `PAYMENT_REF` - Viitenumero\n* `RECEIPT_DATE` - Kuitin päivämäärä\n* `TOTAL_AMOUNT` - Summa"
             },
             "AttachmentInstance": {
                 "type": "object",
@@ -3412,6 +3421,14 @@
                     },
                     "type": {
                         "type": "string",
+                        "readOnly": true
+                    },
+                    "preview": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AttachmentPreview"
+                            }
+                        ],
                         "readOnly": true
                     },
                     "folder_id": {
@@ -3458,6 +3475,7 @@
                     "id",
                     "is_deletable",
                     "name",
+                    "preview",
                     "type",
                     "updated_at"
                 ]
@@ -3494,6 +3512,14 @@
                         "format": "uri",
                         "readOnly": true
                     },
+                    "preview": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AttachmentPreview"
+                            }
+                        ],
+                        "readOnly": true
+                    },
                     "folder_id": {
                         "type": "integer",
                         "nullable": true
@@ -3525,9 +3551,51 @@
                     "file",
                     "id",
                     "name",
+                    "preview",
                     "type",
                     "updated_at"
                 ]
+            },
+            "AttachmentPreview": {
+                "type": "object",
+                "properties": {
+                    "image": {
+                        "type": "string",
+                        "format": "uri",
+                        "readOnly": true
+                    },
+                    "blurhash": {
+                        "type": "string",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "blurhash_w": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "blurhash_h": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "blurhash",
+                    "blurhash_h",
+                    "blurhash_w",
+                    "image"
+                ]
+            },
+            "AutomaticDebtCollectionStatusEnum": {
+                "enum": [
+                    "NOT_STARTED",
+                    "EMAIL_SENT",
+                    "SENT_TO_KRAVIA",
+                    "FAILED"
+                ],
+                "type": "string",
+                "description": "* `NOT_STARTED` - Ei aloitettu\n* `EMAIL_SENT` - Sähköposti lähetetty\n* `SENT_TO_KRAVIA` - Rekisteröity Kravialle\n* `FAILED` - Epäonnistunut"
             },
             "BlankEnum": {
                 "enum": [
@@ -3657,6 +3725,10 @@
                     },
                     "business_id": {
                         "type": "string"
+                    },
+                    "country": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "country_config": {
                         "readOnly": true
@@ -3839,6 +3911,11 @@
                         "readOnly": true,
                         "nullable": true
                     },
+                    "stripe_plan_status": {
+                        "type": "string",
+                        "readOnly": true,
+                        "nullable": true
+                    },
                     "can_invoice": {
                         "type": "string",
                         "readOnly": true
@@ -3853,6 +3930,9 @@
                         "type": "boolean"
                     },
                     "onboarding_einvoice_enabled": {
+                        "type": "boolean"
+                    },
+                    "onboarding_registered_to_kravia": {
                         "type": "boolean"
                     },
                     "einvoicing_enabled": {
@@ -3946,6 +4026,13 @@
                     "monthly_invoice_limit": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "is_new_invoicer": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "is_automatic_debt_collection_enabled": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -3953,6 +4040,7 @@
                     "apix_transfer_key",
                     "apix_unique_id",
                     "can_invoice",
+                    "country",
                     "country_config",
                     "created_at",
                     "demo_days_left",
@@ -3965,6 +4053,7 @@
                     "invoices_sent_this_month",
                     "invoicing_tax_code",
                     "is_eligible_for_einvoicing",
+                    "is_new_invoicer",
                     "is_trialing",
                     "logo",
                     "monthly_invoice_limit",
@@ -3975,6 +4064,7 @@
                     "salaxy_account_id",
                     "salaxy_enabled",
                     "stripe_customer_id",
+                    "stripe_plan_status",
                     "stripe_subscription_id",
                     "subscription_plan",
                     "subscription_source",
@@ -4040,9 +4130,6 @@
                     },
                     "permissions": {
                         "$ref": "#/components/schemas/NocfoPermission"
-                    },
-                    "role": {
-                        "$ref": "#/components/schemas/RoleEnum"
                     }
                 },
                 "required": [
@@ -4193,6 +4280,10 @@
                     },
                     "iban": {
                         "type": "string"
+                    },
+                    "bic": {
+                        "type": "string",
+                        "nullable": true
                     }
                 },
                 "required": [
@@ -4295,11 +4386,16 @@
                     "subscription_tier": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "has_tos_acceptance_record": {
+                        "type": "string",
+                        "readOnly": true
                     }
                 },
                 "required": [
                     "avatar_url",
                     "date_joined",
+                    "has_tos_acceptance_record",
                     "id",
                     "invitations",
                     "last_active_business_id",
@@ -4476,7 +4572,7 @@
                     "entry_ui_rows": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/UIRows"
+                            "$ref": "#/components/schemas/EntryUIRows"
                         },
                         "readOnly": true,
                         "description": "UI rows for entries in this document, used for rendering the entry UI."
@@ -4689,6 +4785,46 @@
                     "updated_at"
                 ]
             },
+            "EntryUIRows": {
+                "type": "object",
+                "properties": {
+                    "account_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "account_number": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "vat_code": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "vat_rate": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "readOnly": true
+                    },
+                    "is_debet": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "account_name",
+                    "account_number",
+                    "amount",
+                    "is_debet",
+                    "vat_code",
+                    "vat_rate"
+                ]
+            },
             "FormEnum": {
                 "enum": [
                     "FI_OY",
@@ -4740,11 +4876,27 @@
                         "format": "email",
                         "maxLength": 254
                     },
-                    "role": {
-                        "$ref": "#/components/schemas/RoleEnum"
-                    },
                     "status": {
                         "$ref": "#/components/schemas/InvitationStatusEnum"
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PermissionsEnum"
+                        },
+                        "description": "\n        Business specific permissions for this invitation.\n        If no permission group is provided, this can be\n        used as a fallback for custom permissions."
+                    },
+                    "permission_group": {
+                        "nullable": true,
+                        "description": "The permission group for the invitation.\n\n* `admin` - Pääkäyttäjä\n* `read_only` - Lukuoikeus\n* `bookkeeping` - Kirjanpito\n* `invoicing` - Laskutus\n* `custom` - Omavalinta",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PermissionGroupEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -5023,9 +5175,21 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "is_automatic_debt_collection_enabled": {
+                        "type": "boolean"
+                    },
+                    "automatic_debt_collection_status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AutomaticDebtCollectionStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
                     }
                 },
                 "required": [
+                    "automatic_debt_collection_status",
                     "bank_transaction",
                     "created_at",
                     "credit_notes",
@@ -5164,11 +5328,61 @@
             "NocfoPermission": {
                 "type": "object",
                 "properties": {
-                    "initiate_payments": {
-                        "type": "boolean",
-                        "default": false
+                    "admin": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "bookkeeping_admin": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "bookkeeping_editor": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "bookkeeping_attachment": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "accounts_editor": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "files_editor": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "invoicing_admin": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "invoicing_editor": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "contact_editor": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "reporting_admin": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "reporting_editor": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "salary": {
+                        "$ref": "#/components/schemas/PermissionValue"
+                    },
+                    "integration_admin": {
+                        "$ref": "#/components/schemas/PermissionValue"
                     }
-                }
+                },
+                "required": [
+                    "accounts_editor",
+                    "admin",
+                    "bookkeeping_admin",
+                    "bookkeeping_attachment",
+                    "bookkeeping_editor",
+                    "contact_editor",
+                    "files_editor",
+                    "integration_admin",
+                    "invoicing_admin",
+                    "invoicing_editor",
+                    "reporting_admin",
+                    "reporting_editor",
+                    "salary"
+                ]
             },
             "NullEnum": {
                 "enum": [
@@ -5486,6 +5700,10 @@
                         "readOnly": true
                     },
                     "name_translations": {},
+                    "header_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
                     "header_path": {
                         "type": "array",
                         "items": {
@@ -5567,6 +5785,14 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "preview": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AttachmentPreview"
+                            }
+                        ],
+                        "readOnly": true
+                    },
                     "folder_id": {
                         "type": "integer",
                         "nullable": true
@@ -5638,6 +5864,10 @@
                     },
                     "business_id": {
                         "type": "string"
+                    },
+                    "country": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "country_config": {
                         "readOnly": true
@@ -5820,6 +6050,11 @@
                         "readOnly": true,
                         "nullable": true
                     },
+                    "stripe_plan_status": {
+                        "type": "string",
+                        "readOnly": true,
+                        "nullable": true
+                    },
                     "can_invoice": {
                         "type": "string",
                         "readOnly": true
@@ -5834,6 +6069,9 @@
                         "type": "boolean"
                     },
                     "onboarding_einvoice_enabled": {
+                        "type": "boolean"
+                    },
+                    "onboarding_registered_to_kravia": {
                         "type": "boolean"
                     },
                     "einvoicing_enabled": {
@@ -5927,6 +6165,13 @@
                     "monthly_invoice_limit": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "is_new_invoicer": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "is_automatic_debt_collection_enabled": {
+                        "type": "boolean"
                     }
                 }
             },
@@ -6135,6 +6380,10 @@
                     "subscription_tier": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "has_tos_acceptance_record": {
+                        "type": "string",
+                        "readOnly": true
                     }
                 }
             },
@@ -6254,7 +6503,7 @@
                     "entry_ui_rows": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/UIRows"
+                            "$ref": "#/components/schemas/EntryUIRows"
                         },
                         "readOnly": true,
                         "description": "UI rows for entries in this document, used for rendering the entry UI."
@@ -6548,6 +6797,17 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/Document"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "is_automatic_debt_collection_enabled": {
+                        "type": "boolean"
+                    },
+                    "automatic_debt_collection_status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AutomaticDebtCollectionStatusEnum"
                             }
                         ],
                         "readOnly": true
@@ -6921,6 +7181,55 @@
                     "message_id"
                 ]
             },
+            "PermissionGroupEnum": {
+                "enum": [
+                    "admin",
+                    "read_only",
+                    "bookkeeping",
+                    "invoicing",
+                    "custom"
+                ],
+                "type": "string",
+                "description": "* `admin` - Pääkäyttäjä\n* `read_only` - Lukuoikeus\n* `bookkeeping` - Kirjanpito\n* `invoicing` - Laskutus\n* `custom` - Omavalinta"
+            },
+            "PermissionValue": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "boolean"
+                    },
+                    "explanation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "explanation",
+                    "name",
+                    "value"
+                ]
+            },
+            "PermissionsEnum": {
+                "enum": [
+                    "admin",
+                    "bookkeeping_admin",
+                    "bookkeeping_editor",
+                    "bookkeeping_attachment",
+                    "accounts_editor",
+                    "files_editor",
+                    "invoicing_admin",
+                    "invoicing_editor",
+                    "contact_editor",
+                    "reporting_admin",
+                    "reporting_editor",
+                    "salary",
+                    "integration_admin"
+                ],
+                "type": "string",
+                "description": "* `admin` - Pääkäyttäjä\n* `bookkeeping_admin` - Kirjanpidon pääkäyttäjä\n* `bookkeeping_editor` - Kirjanpidon muokkaus\n* `bookkeeping_attachment` - Kirjanpidon liitteet\n* `accounts_editor` - Tilien muokkaus\n* `files_editor` - Tiedostojen muokkaus\n* `invoicing_admin` - Laskutuksen pääkäyttäjä\n* `invoicing_editor` - Laskujen ja tuotteiden muokkaus\n* `contact_editor` - Kontaktien muokkaus\n* `reporting_admin` - Raportoinnin pääkäyttäjä\n* `reporting_editor` - Raportoinnin muokkaus\n* `salary` - Palkat\n* `integration_admin` - Yhteydet"
+            },
             "Product": {
                 "type": "object",
                 "properties": {
@@ -7172,15 +7481,6 @@
                 "type": "string",
                 "description": "* `KEEP` - Keep\n* `ROLL` - Roll"
             },
-            "RoleEnum": {
-                "enum": [
-                    "ADMIN",
-                    "EDITOR",
-                    "READ_ONLY"
-                ],
-                "type": "string",
-                "description": "* `ADMIN` - Admin\n* `EDITOR` - Normaali käyttäjä\n* `READ_ONLY` - Vain lukuoikeus"
-            },
             "Tag": {
                 "type": "object",
                 "properties": {
@@ -7249,46 +7549,6 @@
                 ],
                 "type": "string",
                 "description": "* `ASS` - Vastaavaa\n* `ASS_DEP` - Poistokelpoinen omaisuus\n* `ASS_VAT` - Arvonlisäverosaatava\n* `ASS_REC` - Siirtosaamiset\n* `ASS_PAY` - Pankkitili / käteisvarat\n* `ASS_DUE` - Myyntisaatavat\n* `LIA` - Vastattavaa\n* `LIA_EQU` - Oma pääoma\n* `LIA_PRE` - Edellisten tilikausien voitto\n* `LIA_DUE` - Ostovelat\n* `LIA_DEB` - Velat\n* `LIA_ACC` - Siirtovelat\n* `LIA_VAT` - Arvonlisäverovelka\n* `REV` - Tulot\n* `REV_SAL` - Liikevaihtotulot (myynti)\n* `REV_NO` - Verottomat tulot\n* `EXP` - Menot\n* `EXP_DEP` - Poistot\n* `EXP_NO` - Vähennyskelvottomat menot\n* `EXP_50` - Puoliksi vähennyskelpoiset menot\n* `EXP_TAX` - Verotili\n* `EXP_TAX_PRE` - Ennakkoverot"
-            },
-            "UIRows": {
-                "type": "object",
-                "properties": {
-                    "account_name": {
-                        "type": "string",
-                        "readOnly": true
-                    },
-                    "account_number": {
-                        "type": "string",
-                        "readOnly": true
-                    },
-                    "vat_code": {
-                        "type": "integer",
-                        "readOnly": true
-                    },
-                    "vat_rate": {
-                        "type": "string",
-                        "format": "decimal",
-                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
-                        "readOnly": true
-                    },
-                    "is_debet": {
-                        "type": "boolean",
-                        "readOnly": true
-                    },
-                    "amount": {
-                        "type": "number",
-                        "format": "float",
-                        "readOnly": true
-                    }
-                },
-                "required": [
-                    "account_name",
-                    "account_number",
-                    "amount",
-                    "is_debet",
-                    "vat_code",
-                    "vat_rate"
-                ]
             },
             "VatCode2bdEnum": {
                 "enum": [
