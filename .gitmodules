@@ -1,0 +1,3 @@
+[submodule "vendor/Hawaii"]
+	path = vendor/Hawaii
+	url = git@github.com:pekkanikander/Hawaii.git
