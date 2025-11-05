@@ -78,11 +78,41 @@ let runVariantC () = task {
     printResponse resp body
 }
 
+// Variant D: HttpRequestMessage + Authorization property (no TryAddWithoutValidation)
+let runVariantD () = task {
+    printfn "\n=== Variant D: HttpRequestMessage + Authorization property ==="
+    use client = new HttpClient()
+    use req = new HttpRequestMessage(HttpMethod.Get, absoluteUrl)
+    req.Headers.Accept.Add(MediaTypeWithQualityHeaderValue("application/json"))
+    req.Headers.Authorization <- AuthenticationHeaderValue("Token", token)
+    printfn "Request headers to be sent:"
+    req.Headers |> Seq.iter (fun kv -> printfn "  %s: %s" kv.Key (String.Join(", ", kv.Value)))
+    use! resp = client.SendAsync(req)
+    let! body = resp.Content.ReadAsStringAsync()
+    printResponse resp body
+}
+
+// Variant E: DefaultRequestHeaders.Authorization property + BaseAddress
+let runVariantE () = task {
+    printfn "\n=== Variant E: DefaultRequestHeaders.Authorization + BaseAddress ==="
+    use client = new HttpClient()
+    client.BaseAddress <- Uri(baseUrl)
+    client.DefaultRequestHeaders.Accept.Add(MediaTypeWithQualityHeaderValue("application/json"))
+    client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Token", token)
+    let relative = "/v1/business/?page_size=2&page=1"
+    printfn "Sending GET %s%s" baseUrl relative
+    use! resp = client.GetAsync(relative)
+    let! body = resp.Content.ReadAsStringAsync()
+    printResponse resp body
+}
+
 // Run all variants sequentially
 let main = task {
     do! runVariantA ()
     do! runVariantB ()
     do! runVariantC ()
+    do! runVariantD ()
+    do! runVariantE ()
 }
 
 main.GetAwaiter().GetResult()

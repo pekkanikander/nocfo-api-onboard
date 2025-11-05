@@ -117,6 +117,11 @@ In general, the LLM assistant needs to be vigilent about such details, as the le
 - **API integration notes**:
   - Auth header is `Authorization: Token <token>` (not Bearer). Raw `HttpClient` tests were invaluable to confirm headers and payloads. The LLM didn't notice this first.
   - Be defensive with pagination fields: treat `results` as potentially `null` and default to empty list.
+- **Authorization header handling in .NET (critical gotcha)**:
+  - Using `HttpRequestMessage.Headers.Authorization <- AuthenticationHeaderValue("Token", token)` works reliably and is the preferred, clear approach.
+  - `TryAddWithoutValidation("Authorization", "Token ...")` also works and bypasses .NET’s header validation when needed.
+  - Avoid relying on generic header adders in pipelines (e.g., adding Authorization via `Headers.Add` in generated code). Validation can reject or strip nonstandard schemes like `Token` and yield silent 401s.
+  - Prefer per-request Authorization over `DefaultRequestHeaders` to avoid duplication and ensure each request carries the correct token; both forms (per-request or default) can work, but per-request is explicit and least surprising.
 - **Status**: First reasonable Hawaii-based F# client achieved with minimal custom code and a flat structure. We haven’t yet reproduced the TS/PureScript/pure F# (without tools) functionality (listing accounts and computing balances) but are set up to proceed cleanly.
 - **Next**:
   - Add lazy paged pull (AsyncSeq) wrappers on top of generated calls.
@@ -126,7 +131,7 @@ In general, the LLM assistant needs to be vigilent about such details, as the le
   ## Progress history ##
 
 * August 28, 2025: First version of this document created, with minimal testing of TypeScript, PureScript and F# tested
-* November 4, 2025: Second version of this document, with partual success using F# and Hawaii
+* November 4, 2025: Second version of this document, with partial success using F# and Hawaii
 
 ---
 
