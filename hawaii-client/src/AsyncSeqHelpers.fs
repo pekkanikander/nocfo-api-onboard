@@ -6,18 +6,23 @@ module AsyncSeqHelpers =
     let nullToEmptyList (items: 'T list) =
         if isNull (box items) then [] else items
 
-    /// Paginates by invoking fetchPage starting from page=1, yielding items lazily until hasNext is false.
-    let paginateByPage fetchPage getResults hasNext =
-        let rec loop pageNumber : AsyncSeq<'Item> =
-            asyncSeq {
-                let! page = fetchPage pageNumber
-                let items = page |> getResults |> nullToEmptyList
-                yield! AsyncSeq.ofSeq items
-                if hasNext page then
-                    yield! loop (pageNumber + 1)
-            }
-        loop 1
+    /// Paginates by invoking fetchPage starting from page=1, yielding items lazily while the page's `next` is Some.
+    /// Works for any page type that exposes `results : 'Item list` and `next : string option` members.
+    let inline paginateByPageSRTP< ^Page, 'Item
+                                when ^Page : (member results : 'Item list)
+                                 and ^Page : (member next    : string option) >
+        (fetchPage: int -> Async< ^Page >)
+        : AsyncSeq<'Item> =
 
-    /// Convenience: same as paginateByPage but uses a getNext function that returns Some url when there is another page.
-    let paginateByPageWithNextOption fetchPage getResults getNext =
-        paginateByPage fetchPage getResults (fun page -> getNext page |> Option.isSome)
+        let inline resultsOf (p:^Page) : 'Item list = (^Page : (member results : 'Item list) (p))
+        let inline nextOf    (p:^Page) : string option = (^Page : (member next    : string option) (p))
+
+        let rec loop pageNumber : AsyncSeq<'Item> = asyncSeq {
+            let! page = fetchPage pageNumber
+            for item in resultsOf page do
+                yield item
+            match nextOf page with
+            | Some _ -> yield! loop (pageNumber + 1)
+            | None   -> ()
+        }
+        loop 1

@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="src/Http.fs" />
     <Compile Include="src/AsyncSeqHelpers.fs" />
+    <Compile Include="src/Streams.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="generated/NocfoApi.fsproj" />
