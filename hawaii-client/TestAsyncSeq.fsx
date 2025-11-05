@@ -11,9 +11,9 @@ open System.Net.Http.Headers
 open FSharp.Control
 open NocfoClient
 open NocfoClient.AsyncSeqHelpers
+open NocfoClient.Http
 open NocfoApi
 open NocfoApi.Types
-open NocfoApi.Http
 
 let baseUrl = Uri("https://api-tst.nocfo.io")
 let token =
@@ -21,22 +21,17 @@ let token =
     | null | "" -> failwith "NOCFO_TOKEN not set"
     | t -> t
 
-let http = new HttpClient(BaseAddress = baseUrl)
+let http = Http.createHttpClient baseUrl
 let client = NocfoApiClient(http)
 
 let fetchPage (page: int) = async {
-    // Build absolute URL and send per-request Authorization using the property (Variant D)
     let url = baseUrl.OriginalString.TrimEnd('/') + $"/v1/business/?page_size=5&page={page}"
-    use req = new HttpRequestMessage(HttpMethod.Get, url)
-    req.Headers.Accept.Add(MediaTypeWithQualityHeaderValue("application/json"))
-    req.Headers.Authorization <- AuthenticationHeaderValue("Token", token)
-    use! resp = http.SendAsync(req) |> Async.AwaitTask
-    let! content = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
-    if resp.StatusCode <> HttpStatusCode.OK then
-        printfn "HTTP %A while fetching page %d. Content:\n%s" resp.StatusCode page content
-        failwithf "Unexpected status %A" resp.StatusCode
-    let payload = Serializer.deserialize<PaginatedBusinessList> content
-    return payload
+    let! result = Http.getJson<PaginatedBusinessList> http url (Http.withAuth token)
+    match result with
+    | Ok payload -> return payload
+    | Error e ->
+        printfn "HTTP %A while fetching page %d. Content:\n%s" e.statusCode page e.body
+        return (failwithf "Unexpected status %A" e.statusCode)
 }
 
 let resultsOf (p: PaginatedBusinessList) = p.results
