@@ -4,14 +4,15 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="src/Http.fs" />
-    <Compile Include="src/AsyncSeqHelpers.fs" />
-    <Compile Include="src/Streams.fs" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="generated/NocfoApi.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="src/Http.fs" />
+    <Compile Include="src/AsyncSeqHelpers.fs" />
+    <Compile Include="src/Streams.fs" />
+    <Compile Include="src/Domain.fs" />
   </ItemGroup>
 </Project>

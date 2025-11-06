@@ -31,3 +31,26 @@ printfn "Fetched %d businesses" first7.Length
 first7 |> List.iteri (fun i b ->
     let slug = defaultArg b.slug "(none)"
     printfn "#%d id=%d name=%s slug=%s" (i+1) b.id b.name slug)
+
+printfn "Streaming first 7 accounts for first business'...\n"
+
+let first7accounts =
+    let slug = first7.[0].slug
+    match slug with
+    | Some slug ->
+        Nocfo.Domain.Streams.streamAccountsByBusinessSlug http baseUrl token slug
+    | None ->
+        failwith "No slug found for first business"
+    |> AsyncSeq.take 7
+    |> AsyncSeq.toListSynchronously
+
+printfn "Fetched %d accounts" first7accounts.Length
+first7accounts |> List.iteri (fun i a ->
+    match a with
+    | Nocfo.Domain.Account.Partial (p, _) ->
+        printfn "#%d id=%d number=%s" (i+1) p.id p.number
+    | Nocfo.Domain.Account.Full f ->
+        printfn "#%d id=%d number=%s" (i+1) f.id f.number
+    | _ ->
+        failwith "Account is not a partial or full account"
+)

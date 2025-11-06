@@ -36,7 +36,7 @@ module Streams =
             "businesses"
             (fun page -> $"/v1/business/?page_size=100&page={page}")
 
-    let streamAccounts (http: HttpClient) (baseUrl: Uri) (token: string) (businessSlug: string) : AsyncSeq<AccountList> =
+    let streamAccountListsByBusinessSlug (http: HttpClient) (baseUrl: Uri) (token: string) (businessSlug: string) : AsyncSeq<AccountList> =
         streamPaginated<PaginatedAccountListList, AccountList>
             http baseUrl token
             "accounts"
