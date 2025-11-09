@@ -18,12 +18,12 @@ let token =
     | null | "" -> failwith "NOCFO_TOKEN not set"
     | t -> t
 
-let http = Http.createHttpClient baseUrl
+let http = Http.createHttpContext baseUrl token
 
 printfn "Streaming first 7 businesses...\n"
 
 let first7 =
-    streamBusinesses http baseUrl token
+    streamBusinesses http
     |> AsyncSeq.take 7
     |> AsyncSeq.toListSynchronously
 
@@ -38,7 +38,7 @@ let first7accounts =
     let slug = first7.[0].slug
     match slug with
     | Some slug ->
-        Nocfo.Domain.Streams.streamAccountsByBusinessSlug http baseUrl token slug
+        Nocfo.Domain.Streams.streamAccountsByBusinessSlug http slug
     | None ->
         failwith "No slug found for first business"
     |> AsyncSeq.take 7

@@ -4,7 +4,13 @@ open System
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
+open FSharp.Control
 open NocfoApi.Http
+
+type HttpContext = {
+    client: HttpClient
+    token: string
+}
 
 module Http =
     type HttpError = {
@@ -12,17 +18,16 @@ module Http =
         body: string
     }
 
-    let createHttpClient (baseAddress: Uri) =
+    let createHttpContext (baseAddress: Uri) (token: string) =
         let client = new HttpClient()
-        client.BaseAddress <- baseAddress
-        client
+        client.BaseAddress <- Uri(baseAddress.OriginalString.TrimEnd('/'))
+        { client = client; token = token }
 
+    let withAuth (httpContext: HttpContext) (request: HttpRequestMessage) =
+        request.Headers.Authorization <- AuthenticationHeaderValue("Token", httpContext.token)
+        request
     let withAcceptJson (request: HttpRequestMessage) =
         request.Headers.Accept.Add(MediaTypeWithQualityHeaderValue("application/json"))
-        request
-
-    let withAuth (token: string) (request: HttpRequestMessage) =
-        request.Headers.Authorization <- AuthenticationHeaderValue("Token", token)
         request
 
     let send (httpClient: HttpClient) (request: HttpRequestMessage) = async {
@@ -36,12 +41,12 @@ module Http =
             return Error { statusCode = response.StatusCode; body = content }
     }
 
-    let getJson<'T> (httpClient: HttpClient) (absoluteUrl: string) (configure: HttpRequestMessage -> HttpRequestMessage) = async {
+    let getJson<'T> (httpContext: HttpContext) (absoluteUrl: string)= async {
         use req =
             new HttpRequestMessage(HttpMethod.Get, absoluteUrl)
+            |> withAuth httpContext
             |> withAcceptJson
-            |> configure
-        let! result = send httpClient req
+        let! result = send httpContext.client req
         match result with
         | Ok body ->
             let value = Serializer.deserialize<'T> body
