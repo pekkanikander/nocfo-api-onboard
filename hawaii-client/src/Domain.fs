@@ -11,6 +11,9 @@ type DomainError =
   | Unexpected of string
 
 /// Generic hydratable wrapper carrying a partial payload and a fetch that upgrades it
+///
+/// In this domain, we use Full and Partial only to represent the lifecycle.
+/// Hence, we do not use RQA for them, even though LLMs suggest it.
 type Hydratable<'Full,'Partial> =
   | Partial of partial: 'Partial * fetch: (unit -> Async<Result<Hydratable<'Full,'Partial>, DomainError>>)
   | Full    of full:   'Full
@@ -45,6 +48,18 @@ type BusinessContext = {
   http: HttpContext
 }
 
+/// Accounts are identified by their ID. Each account is associated with a business,
+/// but we don't model that relationship yet, as we don't need it yet.
+type AccountFull  = NocfoApi.Types.Account
+type AccountRow   = NocfoApi.Types.AccountList
+
+/// Account is a hydratable of its full form with AccountRow as the partial
+type Account  = Hydratable<AccountFull, AccountRow>
+
+///
+/// Business module operations
+///
+
 module Business =
   let ofContext (context: BusinessContext) : Business =
     Hydratable.Partial (context.key, fetch = fun () -> async {
@@ -67,19 +82,19 @@ module Business =
     | Full _ -> async.Return (Ok business)
     | Partial (key, fetch) -> fetch ()
 
-/// Accounts are identified by their ID. Each account is associated with a business,
-/// but we don't model that relationship yet, as we don't need it yet.
-type AccountFull  = NocfoApi.Types.Account
-type AccountRow   = NocfoApi.Types.AccountList
-
-/// Account is a hydratable of its full form with AccountRow as the partial
-type Account  = Hydratable<AccountFull, AccountRow>
+///
+/// Account module operations
+///
 
 module Account =
   let hydrate (acc: Account) : Async<Result<Account, DomainError>> =
     match acc with
     | Full _ -> async.Return (Ok acc)
     | Partial (_row, fetch) -> fetch ()
+
+///
+/// Streams module operations —— maybe to be folded to the previous modules
+///
 
 module Streams =
   /// Domain-level stream of accounts for a given businessSlug, yielding lazy Partials that can be hydrated to Full on demand
