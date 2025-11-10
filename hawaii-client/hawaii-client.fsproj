@@ -10,6 +10,7 @@
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src/Endpoints.fs" />
     <Compile Include="src/Http.fs" />
     <Compile Include="src/AsyncSeqHelpers.fs" />
     <Compile Include="src/Streams.fs" />

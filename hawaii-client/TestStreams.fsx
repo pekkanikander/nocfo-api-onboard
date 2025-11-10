@@ -22,27 +22,33 @@ let http = Http.createHttpContext baseUrl token
 
 printfn "Streaming first 7 businesses...\n"
 
-let first7 =
-    streamBusinesses http
+let first7businesses =
+    streamBusinessesRaw http
     |> AsyncSeq.take 7
     |> AsyncSeq.toListSynchronously
 
-printfn "Fetched %d businesses" first7.Length
-first7 |> List.iteri (fun i b ->
+printfn "Fetched %d businesses" first7businesses.Length
+first7businesses |> List.iteri (fun i b ->
     let slug = defaultArg b.slug "(none)"
     printfn "#%d id=%d name=%s slug=%s" (i+1) b.id b.name slug)
 
 printfn "Streaming first 7 accounts for first business'...\n"
 
 let first7accounts =
-    let slug = first7.[0].slug
-    match slug with
-    | Some slug ->
-        Nocfo.Domain.Streams.streamAccountsByBusinessSlug http slug
-    | None ->
-        failwith "No slug found for first business"
-    |> AsyncSeq.take 7
-    |> AsyncSeq.toListSynchronously
+    let slug = first7businesses.[0].slug
+    let context : Nocfo.Domain.BusinessContext = {
+        key = {
+            id = first7businesses.[0].identifiers.[0]
+            // Fixme: Make slug optional
+            slug = defaultArg first7businesses.[0].slug "(none)"
+        }
+        http = http
+    }
+    let accounts =
+        Nocfo.Domain.Streams.streamAccounts context
+        |> AsyncSeq.take 7
+        |> AsyncSeq.toListSynchronously
+    accounts
 
 printfn "Fetched %d accounts" first7accounts.Length
 first7accounts |> List.iteri (fun i a ->

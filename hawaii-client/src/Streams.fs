@@ -3,10 +3,11 @@ namespace NocfoClient
 open System
 open System.Net.Http
 open FSharp.Control
+open NocfoApi.Types
 open NocfoClient
 open NocfoClient.Http
 open NocfoClient.AsyncSeqHelpers
-open NocfoApi.Types
+open NocfoClient.Endpoints
 
 module Streams =
     let inline streamPaginated< ^Page, 'Item
@@ -18,8 +19,7 @@ module Streams =
         : AsyncSeq<'Item> =
 
         let fetchPage (page: int) : Async< ^Page > = async {
-            let url     = http.client.BaseAddress.OriginalString + relativeForPage page
-            let! result = Http.getJson< ^Page > http url
+            let! result = Http.getJson< ^Page > http (relativeForPage page)
             match result with
             | Ok payload -> return payload
             | Error e ->
@@ -28,14 +28,14 @@ module Streams =
         }
         paginateByPageSRTP fetchPage
 
-    let streamBusinesses (http: HttpContext) : AsyncSeq<Business> =
+    let streamBusinessesRaw (http: HttpContext) : AsyncSeq<Business> =
         streamPaginated<PaginatedBusinessList, Business>
             http
             "businesses"
-            (fun page -> $"/v1/business/?page_size=100&page={page}")
+            (fun page -> Endpoints.businessList page)
 
-    let streamAccountListsByBusinessSlug (http: HttpContext) (businessSlug: string) : AsyncSeq<AccountList> =
+    let streamAccountListsByBusinessSlug (http: HttpContext) (businessSlug: string): AsyncSeq<AccountList> =
         streamPaginated<PaginatedAccountListList, AccountList>
             http
             "accounts"
-            (fun page -> $"/v1/business/{businessSlug}/account/?page_size=100&page={page}")
+            (fun page -> Endpoints.accountsBySlugPage businessSlug page)

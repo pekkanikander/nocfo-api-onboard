@@ -1,15 +1,15 @@
 namespace Nocfo.Domain
 
 open System
-open System.Net.Http
 open FSharp.Control
 open NocfoClient
+open NocfoClient.Endpoints
 /// Businesses are identified by their VAT ID or other similar identifier, and a slug.
 /// This identifier is assumed to be serializable, immutable and stable.
 /// The slug is fetched lazily from the API on demand.
 type BusinessKey = {
   id: NocfoApi.Types.BusinessIdentifier
-  slug: string option
+  slug: string
 }
 
 type BusinessMeta = {
@@ -38,12 +38,15 @@ type BusinessContext = {
 module Business =
   let hydrate (context: BusinessContext) = async {
     let! result =
-      Http.getJson<NocfoApi.Types.Business> context.http $"/v1/business/{context.key.slug}/"
+      Http.getJson<NocfoApi.Types.Business> context.http (Endpoints.businessBySlug context.key.slug)
     match result with
     | Result.Ok business ->
       return Business.Full {
         key = context.key
-        meta = { name = business.name; country = Some business.country }
+        meta = {
+          name = business.name
+          country = Option.ofObj business.country
+        }
         raw = business
       }
     | Result.Error error ->
@@ -69,11 +72,16 @@ module Account =
 
 module Streams =
   /// Domain-level stream of accounts for a given businessSlug, yielding lazy Partials that can be hydrated to Full on demand
-  let streamAccountsByBusinessSlug (http: HttpContext) (businessSlug: string) : AsyncSeq<Account> =
-    NocfoClient.Streams.streamAccountListsByBusinessSlug http  businessSlug
+  let streamAccounts (context: BusinessContext) : AsyncSeq<Account> =
+    NocfoClient.Streams.streamAccountListsByBusinessSlug context.http context.key.slug
     |> AsyncSeq.map (fun (row: AccountRow) ->
     Account.Partial (row, fetch = fun () -> async {
-        let! result = Http.getJson<AccountFull> http $"/v1/business/{businessSlug}/account/{row.id}/"
+        let! result =
+          Http.getJson<AccountFull>
+            context.http
+            (Endpoints.accountById
+            context.key.slug
+            (row.id.ToString()))
         match result with
         | Result.Ok full -> return Account.Full full
         | Result.Error error -> return Account.Error error
