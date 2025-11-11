@@ -12,7 +12,7 @@
   <ItemGroup>
     <Compile Include="src/Endpoints.fs" />
     <Compile Include="src/Http.fs" />
-    <Compile Include="src/AsyncSeqHelpers.fs" />
+    <Compile Include="src/AsyncSeq.fs" />
     <Compile Include="src/Streams.fs" />
     <Compile Include="src/Domain.fs" />
   </ItemGroup>

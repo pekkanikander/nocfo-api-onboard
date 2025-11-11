@@ -9,6 +9,7 @@ open FSharp.Control
 open NocfoClient
 open NocfoClient.Streams
 open NocfoClient.Http
+open Nocfo.Domain
 open NocfoApi.Types
 
 
@@ -23,25 +24,37 @@ let http = Http.createHttpContext baseUrl token
 printfn "Streaming first 7 businesses...\n"
 
 let first7businesses =
-    streamBusinessesRaw http
+    Nocfo.Domain.Streams.streamBusinesses http
     |> AsyncSeq.take 7
     |> AsyncSeq.toListSynchronously
 
 printfn "Fetched %d businesses" first7businesses.Length
-first7businesses |> List.iteri (fun i b ->
-    let slug = defaultArg b.slug "(none)"
-    printfn "#%d id=%d name=%s slug=%s" (i+1) b.id b.name slug)
+first7businesses |> List.iteri (fun i (result: Result<Nocfo.Domain.Business, DomainError>) ->
+    match result with
+    | Ok business ->
+        match business with
+        | Nocfo.Domain.Business.Partial (key, _) ->
+            printfn "#%d id=%A slug=%s" (i+1) key.id key.slug
+        | Nocfo.Domain.Business.Full full ->
+            printfn "#%d id=%A name=%s slug=%s" (i+1) full.key.id full.meta.name full.key.slug
+    | Error e ->
+        printfn "#%d error=%A" (i+1) e
+)
 
 printfn "Streaming first 7 accounts for first business'...\n"
 
 let first7accounts =
-    let slug = first7businesses.[0].slug
+
+    let business =
+        match first7businesses.[0] with
+        | Ok business -> business
+        | Error e -> failwithf "Error fetching business: %A" e
+
     let context : Nocfo.Domain.BusinessContext = {
-        key = {
-            id = first7businesses.[0].identifiers.[0]
-            // Fixme: Make slug optional
-            slug = defaultArg first7businesses.[0].slug "(none)"
-        }
+        key =
+            match business with
+            | Nocfo.Domain.Business.Partial (key, _) -> key
+            | Nocfo.Domain.Business.Full full -> full.key
         http = http
     }
     let accounts =
@@ -52,11 +65,15 @@ let first7accounts =
 
 printfn "Fetched %d accounts" first7accounts.Length
 first7accounts |> List.iteri (fun i a ->
-    match a with
+    let account =
+        match a with
+        | Ok account -> account
+        | Error e -> failwithf "Error fetching account: %A" e
+    match account with
     | Nocfo.Domain.Account.Partial (p, _) ->
         printfn "#%d id=%d number=%s" (i+1) p.id p.number
-    | Nocfo.Domain.Account.Full f ->
-        printfn "#%d id=%d number=%s" (i+1) f.id f.number
+    | Nocfo.Domain.Account.Full full ->
+        printfn "#%d id=%d number=%s" (i+1) full.id full.number
     | _ ->
         failwith "Account is not a partial or full account"
 )

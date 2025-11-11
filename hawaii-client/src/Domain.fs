@@ -2,8 +2,9 @@ namespace Nocfo.Domain
 
 open System
 open FSharp.Control
+open NocfoApi.Types
 open NocfoClient
-open NocfoClient.Endpoints
+open NocfoClient.Http
 
 /// Domain-level error channel (extend as needed)
 type DomainError =
@@ -97,19 +98,27 @@ module Account =
 ///
 
 module Streams =
+
+  /// Domain-level stream of businesses, yielding directly Full businesses
+  let streamBusinesses (http: HttpContext) : AsyncSeq<Result<Business, DomainError>> =
+    let toDomain (business: NocfoApi.Types.Business) : Business =
+      Business.Full {
+        key = { id = business.identifiers.[0]; slug = defaultArg business.slug "(none)" }
+        meta = { name = business.name; country = Option.ofObj business.country }
+        raw  = business
+      }
+    NocfoClient.Streams.streamBusinessesRaw http
+    |> AsyncSeq.map (Result.map toDomain >> Result.mapError DomainError.Http)
+
   /// Domain-level stream of accounts for a given businessSlug, yielding lazy Partials that can be hydrated to Full on demand
-  let streamAccounts (context: BusinessContext) : AsyncSeq<Account> =
+  let streamAccounts (context: BusinessContext) : AsyncSeq<Result<Account, DomainError>> =
+    let toPartial (row: AccountRow) : Account =
+      Account.Partial (row, fetch = fun () -> async {
+        let! result =
+          Http.getJson<AccountFull>
+            context.http
+            (Endpoints.accountById context.key.slug (row.id.ToString()))
+        return Result.map (Account.Full) result |> Result.mapError DomainError.Http
+      })
     NocfoClient.Streams.streamAccountListsByBusinessSlug context.http context.key.slug
-    |> AsyncSeq.map (fun (row: AccountRow) ->
-      Hydratable.Partial (row, fetch = fun () -> async {
-          let! result =
-            Http.getJson<AccountFull>
-              context.http
-              (Endpoints.accountById context.key.slug (row.id.ToString()))
-          match result with
-          | Result.Ok full ->
-              return Ok (Hydratable.Full full)
-          | Result.Error error ->
-              return Error (DomainError.Http error)
-        })
-    )
+    |> AsyncSeq.map (Result.map toPartial >> Result.mapError DomainError.Http)
