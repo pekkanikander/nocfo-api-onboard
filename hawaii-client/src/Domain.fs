@@ -49,6 +49,10 @@ type BusinessContext = {
   http: HttpContext
 }
 
+type AccountClass = Asset | Liability | Equity | Income | Expense
+
+type AccountClassTotals = Map<AccountClass, decimal>
+
 /// Accounts are identified by their ID. Each account is associated with a business,
 /// but we don't model that relationship yet, as we don't need it yet.
 type AccountFull  = NocfoApi.Types.Account
@@ -70,8 +74,7 @@ module Business =
       | Result.Ok business ->
           let full : BusinessFull =
             { key  = context.key
-              meta = { name = business.name
-                       country = Option.ofObj business.country }
+              meta = { name = business.name; country = Option.ofObj business.country };
               raw  = business }
           return Ok (Hydratable.Full full)
       | Result.Error httpErr ->
@@ -93,22 +96,53 @@ module Account =
     | Full _ -> async.Return (Ok acc)
     | Partial (_row, fetch) -> fetch ()
 
+  let inline classify< ^Account when ^Account : (member ``type`` : Type92dEnum option) >
+    (account: ^Account ) : AccountClass option =
+    match account.``type`` with
+    | Some Type92dEnum.ASS         -> Some Asset
+    | Some Type92dEnum.ASS_DEP     -> Some Asset
+    | Some Type92dEnum.ASS_VAT     -> Some Asset
+    | Some Type92dEnum.ASS_REC     -> Some Asset
+    | Some Type92dEnum.ASS_PAY     -> Some Asset
+    | Some Type92dEnum.ASS_DUE     -> Some Asset
+    | Some Type92dEnum.LIA         -> Some Liability
+    | Some Type92dEnum.LIA_EQU     -> Some Liability
+    | Some Type92dEnum.LIA_PRE     -> Some Liability
+    | Some Type92dEnum.LIA_DUE     -> Some Liability
+    | Some Type92dEnum.LIA_DEB     -> Some Liability
+    | Some Type92dEnum.LIA_ACC     -> Some Liability
+    | Some Type92dEnum.LIA_VAT     -> Some Liability
+    | Some Type92dEnum.REV         -> Some Income
+    | Some Type92dEnum.REV_SAL     -> Some Income
+    | Some Type92dEnum.REV_NO      -> Some Income
+    | Some Type92dEnum.EXP         -> Some Expense
+    | Some Type92dEnum.EXP_DEP     -> Some Expense
+    | Some Type92dEnum.EXP_NO      -> Some Expense
+    | Some Type92dEnum.EXP_50      -> Some Expense
+    | Some Type92dEnum.EXP_TAX     -> Some Expense
+    | Some Type92dEnum.EXP_TAX_PRE -> Some Expense
+    | None  -> None
+
 ///
 /// Streams module operations —— maybe to be folded to the previous modules
 ///
 
 module Streams =
 
+  let private asDomain r = Result.mapError DomainError.Http r
+
   /// Domain-level stream of businesses, yielding directly Full businesses
   let streamBusinesses (http: HttpContext) : AsyncSeq<Result<Business, DomainError>> =
     let toDomain (business: NocfoApi.Types.Business) : Business =
+      let slug = defaultArg business.slug "(none)" // XXX fixme
       Business.Full {
-        key = { id = business.identifiers.[0]; slug = defaultArg business.slug "(none)" }
+        // XXX fixme: what if there are no identifiers?
+        key = { id = business.identifiers.[0]; slug = slug };
         meta = { name = business.name; country = Option.ofObj business.country }
         raw  = business
       }
     NocfoClient.Streams.streamBusinessesRaw http
-    |> AsyncSeq.map (Result.map toDomain >> Result.mapError DomainError.Http)
+    |> AsyncSeq.map (Result.map toDomain >> asDomain)
 
   /// Domain-level stream of accounts for a given businessSlug, yielding lazy Partials that can be hydrated to Full on demand
   let streamAccounts (context: BusinessContext) : AsyncSeq<Result<Account, DomainError>> =
@@ -118,7 +152,20 @@ module Streams =
           Http.getJson<AccountFull>
             context.http
             (Endpoints.accountById context.key.slug (row.id.ToString()))
-        return Result.map (Account.Full) result |> Result.mapError DomainError.Http
+        return (Result.map (Account.Full) >> asDomain) result
       })
     NocfoClient.Streams.streamAccountListsByBusinessSlug context.http context.key.slug
-    |> AsyncSeq.map (Result.map toPartial >> Result.mapError DomainError.Http)
+    |> AsyncSeq.map (Result.map toPartial >> asDomain)
+
+module Reports =
+  let addToTotals (totals: AccountClassTotals) (account: Account) : Async<Result<AccountClassTotals, DomainError>> =
+    Account.hydrate account
+    |> AsyncResult.bind (fun hydrated ->
+      match hydrated with
+      | Full full ->
+        let cls = Account.classify full
+        match cls with
+        | Some cls -> Ok (Map.change cls (fun old -> Some ((defaultArg old 0M) + (decimal full.balance))) totals)
+        | None     -> Error (DomainError.Unexpected "Account type is required")
+      | Partial _  -> Error (DomainError.Unexpected "Account is not hydrated")
+    )

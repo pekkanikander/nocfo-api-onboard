@@ -15,6 +15,13 @@ module AsyncResult =
     let bind f     = liftAsync (Result.bind f)
     let mapError f = liftAsync (Result.mapError f)
 
+module AsyncSeq =
+    let inline liftAsync (hof: 'T seq -> 'T option) (ar: AsyncSeq<'T>) : Async<'T option> =
+        async {
+            let! result = AsyncSeq.toListAsync ar
+            return hof result
+        }
+    let inline tryHead (s: AsyncSeq<'T>) : Async<'T option> = liftAsync (Seq.tryHead) s
 
 module AsyncSeqHelpers =
     let nullToEmptyList (items: 'T list) =
