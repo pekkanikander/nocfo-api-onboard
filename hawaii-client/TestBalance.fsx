@@ -21,6 +21,7 @@ let token =
 let slug = "demo-720e8e"
 
 let http = Http.createHttpContext baseUrl token
+let accounting = Accounting.ofHttp http
 
 // ===== helpers =====
 let inline dflt (x: decimal option) = x |> Option.defaultValue 0M
@@ -47,7 +48,7 @@ let printTotals (totals: AccountClassTotals) =
 
 // Find the Business by slug (streamBusinesses -> pick matching Full)
 let businessKey =
-    Streams.streamBusinesses http
+    Streams.streamBusinesses accounting
     |> AsyncSeq.choose (function
         | Ok (Hydratable.Full b) when b.key.slug = slug -> Some b.key
         | _ -> None)
@@ -57,7 +58,7 @@ let businessKey =
        | Some key -> key
        | None -> failwithf "Business with slug '%s' not found or not accessible." slug
 
-let ctx : BusinessContext = { key = businessKey; http = http }
+let ctx : BusinessContext = { key = businessKey; ctx = accounting }
 
 // Fold accounts -> class totals (accumulate errors, don’t stop on first)
 let step (totals, errs) (r: Result<Account, DomainError>) = async {

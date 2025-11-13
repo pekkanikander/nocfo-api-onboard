@@ -20,11 +20,12 @@ let token =
     | t -> t
 
 let http = Http.createHttpContext baseUrl token
+let accounting = Accounting.ofHttp http
 
 printfn "Streaming first 7 businesses...\n"
 
 let first7businesses =
-    Nocfo.Domain.Streams.streamBusinesses http
+    Nocfo.Domain.Streams.streamBusinesses accounting
     |> AsyncSeq.take 7
     |> AsyncSeq.toListSynchronously
 
@@ -55,7 +56,7 @@ let first7accounts =
             match business with
             | Nocfo.Domain.Business.Partial (key, _) -> key
             | Nocfo.Domain.Business.Full full -> full.key
-        http = http
+        ctx = accounting
     }
     let accounts =
         Nocfo.Domain.Streams.streamAccounts context
@@ -74,6 +75,4 @@ first7accounts |> List.iteri (fun i a ->
         printfn "#%d id=%d number=%s" (i+1) p.id p.number
     | Nocfo.Domain.Account.Full full ->
         printfn "#%d id=%d number=%s" (i+1) full.id full.number
-    | _ ->
-        failwith "Account is not a partial or full account"
 )

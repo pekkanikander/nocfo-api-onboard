@@ -6,6 +6,8 @@ open NocfoApi.Types
 open NocfoClient
 open NocfoClient.Http
 
+/// Domain-level generics
+
 /// Domain-level error channel (extend as needed)
 type DomainError =
   | Http of Http.HttpError
@@ -17,7 +19,9 @@ type DomainError =
 /// Hence, we do not use RQA for them, even though LLMs suggest it.
 type Hydratable<'Full,'Partial> =
   | Partial of partial: 'Partial * fetch: (unit -> Async<Result<Hydratable<'Full,'Partial>, DomainError>>)
-  | Full    of full:   'Full
+  | Full    of full:    'Full
+
+/// Accounting model: Businesses, Accounts, and Reports
 
 /// Businesses are identified by their VAT ID or other similar identifier, and a slug.
 /// This identifier is assumed to be serializable, immutable and stable.
@@ -38,16 +42,10 @@ type BusinessFull = {
   raw:  NocfoApi.Types.Business
 }
 
-/// Business is now a hydratable of its full form with BusinessKey as the partial
+/// Business is a hydratable of its full form, with BusinessKey as the partial
 type Business = Hydratable<BusinessFull, BusinessKey>
 
-// At runtime we bind everything to a business context.
-// This represents the repository, which at this point is just a HTTP client
-// that allows us to fetch the business and its associated data.
-type BusinessContext = {
-  key:  BusinessKey
-  http: HttpContext
-}
+/// Accounts
 
 type AccountClass = Asset | Liability | Equity | Income | Expense
 
@@ -61,6 +59,48 @@ type AccountRow   = NocfoApi.Types.AccountList
 /// Account is a hydratable of its full form with AccountRow as the partial
 type Account  = Hydratable<AccountFull, AccountRow>
 
+/// Contexts
+
+/// AccountingContext
+/// AccountingContext represents the repository, which at this point is just a HTTP client
+/// that allows us to fetch the business and its associated data.
+
+type AccountingOptions = {
+  pageSize: int
+  retryPolicy:   Option<unit> // XXX: Not implemented yet
+  loggingPolicy: Option<unit> // XXX: Not implemented yet
+  cachingPolicy: Option<unit> // XXX: Not implemented yet
+}
+
+type AccountingContext = {
+  http: HttpContext
+  options: AccountingOptions
+}
+
+/// BusinessContext
+
+// At runtime we bind everything to a business context.
+type BusinessContext = {
+  ctx:  AccountingContext
+  key:  BusinessKey
+}
+
+///
+/// Accounting operations
+///
+
+module Accounting =
+  let ofHttp (http: HttpContext) : AccountingContext =
+    {
+      http = http
+      options = {
+        pageSize      = 100
+        retryPolicy   = None
+        loggingPolicy = None
+        cachingPolicy = None
+      }
+    }
+
 ///
 /// Business module operations
 ///
@@ -69,14 +109,14 @@ module Business =
   let ofContext (context: BusinessContext) : Business =
     Hydratable.Partial (context.key, fetch = fun () -> async {
       let! result =
-        Http.getJson<NocfoApi.Types.Business> context.http (Endpoints.businessBySlug context.key.slug)
+        Http.getJson<NocfoApi.Types.Business> context.ctx.http (Endpoints.businessBySlug context.key.slug)
       match result with
       | Result.Ok business ->
           let full : BusinessFull =
             { key  = context.key
               meta = { name = business.name; country = Option.ofObj business.country };
               raw  = business }
-          return Ok (Hydratable.Full full)
+          return Ok (Business.Full full)
       | Result.Error httpErr ->
           return Error (DomainError.Http httpErr)
     })
@@ -91,6 +131,20 @@ module Business =
 ///
 
 module Account =
+  let private mkFetch (context: BusinessContext) (id) : unit -> Async<Result<Account, DomainError>> =
+    fun () ->
+      async {
+        let! result =
+          Http.getJson<AccountFull> context.ctx.http (Endpoints.accountById context.key.slug id)
+        return
+          match result with
+          | Result.Ok account    -> Result.Ok (Account.Full account)
+          | Result.Error httpErr -> Result.Error (DomainError.Http httpErr)
+      }
+
+  let ofRow (context: BusinessContext) (row: AccountRow) : Account =
+    Hydratable.Partial (row, fetch = mkFetch context (row.id.ToString()))
+
   let hydrate (acc: Account) : Async<Result<Account, DomainError>> =
     match acc with
     | Full _ -> async.Return (Ok acc)
@@ -132,7 +186,7 @@ module Streams =
   let private asDomain r = Result.mapError DomainError.Http r
 
   /// Domain-level stream of businesses, yielding directly Full businesses
-  let streamBusinesses (http: HttpContext) : AsyncSeq<Result<Business, DomainError>> =
+  let streamBusinesses (context: AccountingContext) : AsyncSeq<Result<Business, DomainError>> =
     let toDomain (business: NocfoApi.Types.Business) : Business =
       let slug = defaultArg business.slug "(none)" // XXX fixme
       Business.Full {
@@ -141,20 +195,20 @@ module Streams =
         meta = { name = business.name; country = Option.ofObj business.country }
         raw  = business
       }
-    NocfoClient.Streams.streamBusinessesRaw http
+    NocfoClient.Streams.streamBusinessesRaw context.http
     |> AsyncSeq.map (Result.map toDomain >> asDomain)
 
-  /// Domain-level stream of accounts for a given businessSlug, yielding lazy Partials that can be hydrated to Full on demand
+  /// Domain-level stream of accounts for a given business, yielding lazy Partials that can be hydrated to Full on demand
   let streamAccounts (context: BusinessContext) : AsyncSeq<Result<Account, DomainError>> =
     let toPartial (row: AccountRow) : Account =
       Account.Partial (row, fetch = fun () -> async {
         let! result =
           Http.getJson<AccountFull>
-            context.http
+            context.ctx.http
             (Endpoints.accountById context.key.slug (row.id.ToString()))
         return (Result.map (Account.Full) >> asDomain) result
       })
-    NocfoClient.Streams.streamAccountListsByBusinessSlug context.http context.key.slug
+    NocfoClient.Streams.streamAccountListsByBusinessSlug context.ctx.http context.key.slug
     |> AsyncSeq.map (Result.map toPartial >> asDomain)
 
 module Reports =

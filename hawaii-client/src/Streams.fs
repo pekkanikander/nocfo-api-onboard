@@ -13,7 +13,6 @@ module Streams =
         when ^Page : (member results : 'Item list)
          and ^Page : (member next    : string option) >
         (http: HttpContext)
-        (label: string)
         (relativeForPage: int -> string)
         : AsyncSeq<Result<'Item, HttpError>> =
 
@@ -26,11 +25,9 @@ module Streams =
     let streamBusinessesRaw (http: HttpContext) =
         streamPaginated<PaginatedBusinessList, Business>
             http
-            "businesses"
             (fun page -> Endpoints.businessList page)
 
     let streamAccountListsByBusinessSlug (http: HttpContext) (businessSlug: string) =
         streamPaginated<PaginatedAccountListList, AccountList>
             http
-            "accounts"
             (fun page -> Endpoints.accountsBySlugPage businessSlug page)
