@@ -21,18 +21,11 @@ let token =
     | null | "" -> failwith "NOCFO_TOKEN not set"
     | t -> t
 
-let http = Http.createHttpClient baseUrl
-let client = NocfoApiClient(http)
+let context = Http.createHttpContext baseUrl token
+let client = NocfoApiClient(context.client)
 
-let fetchPage (page: int) = async {
-    let url = baseUrl.OriginalString.TrimEnd('/') + $"/v1/business/?page_size=5&page={page}"
-    let! result = Http.getJson<PaginatedBusinessList> http url (Http.withAuth token)
-    match result with
-    | Ok payload -> return payload
-    | Error e ->
-        printfn "HTTP %A while fetching page %d. Content:\n%s" e.statusCode page e.body
-        return (failwithf "Unexpected status %A" e.statusCode)
-}
+let fetchPage (page: int) =
+    Http.getJson<PaginatedBusinessList> context (Endpoints.businessList page)
 
 let stream = paginateByPageSRTP fetchPage
 
@@ -44,6 +37,10 @@ let first7 =
     |> AsyncSeq.toListSynchronously
 
 printfn "Fetched %d businesses" first7.Length
-first7 |> List.iteri (fun i b ->
-    let slug = defaultArg b.slug "(none)"
-    printfn "#%d id=%d name=%s slug=%s" (i+1) b.id b.name slug)
+first7 |> List.iteri (fun i result ->
+    let business =
+        match result with
+        | Ok business -> business
+        | Error e -> failwithf "Error fetching business: %A" e
+    let slug = defaultArg business.slug "(none)"
+    printfn "#%d id=%d name=%s slug=%s" (i+1) business.id business.name slug)
