@@ -4,6 +4,9 @@
 #r "bin/Debug/net9.0/hawaii-client.dll"
 #r "generated/bin/Debug/netstandard2.0/NocfoApi.dll"
 
+#load "TestSupport.fsx"
+open TestSupport
+
 open System
 open FSharp.Control
 open NocfoClient
@@ -11,16 +14,6 @@ open NocfoClient.Streams
 open NocfoClient.Http
 open Nocfo.Domain
 open NocfoApi.Types
-
-
-let baseUrl = Uri("https://api-tst.nocfo.io")
-let token =
-    match Environment.GetEnvironmentVariable "NOCFO_TOKEN" with
-    | null | "" -> failwith "NOCFO_TOKEN not set"
-    | t -> t
-
-let http = Http.createHttpContext baseUrl token
-let accounting = Accounting.ofHttp http
 
 printfn "Streaming first 7 businesses...\n"
 

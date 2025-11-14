@@ -15,25 +15,15 @@
 #load "generated/OpenApiHttp.fs"    // for Serializer
 #load "generated/Types.fs"
 
+#load "TestSupport.fsx"
+open TestSupport
+
 open System
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
 open NocfoApi.Types
 open NocfoApi.Http
-
-let baseUrl =
-    match Environment.GetEnvironmentVariable("NOCFO_BASE_URL") with
-    | null | "" -> "https://api-tst.nocfo.io"
-    | v -> v
-
-let token =
-    match Environment.GetEnvironmentVariable("NOCFO_TOKEN") with
-    | null | "" ->
-        eprintfn "Error: NOCFO_TOKEN environment variable not set"
-        eprintfn "Get a token: https://login-tst.nocfo.io/auth/tokens/"
-        exit 1
-    | t -> t
 
 let authValue = sprintf "Token %s" token
 
@@ -57,7 +47,7 @@ let printSummary (title: string) (resp: HttpResponseMessage) (body: string) =
 
 let testBusinesses () =
     task {
-        let url = baseUrl.TrimEnd('/') + "/v1/business/?page=1&page_size=5"
+        let url = baseUrl.OriginalString.TrimEnd('/') + "/v1/business/?page=1&page_size=5"
         let! (resp, body) = sendGet url
         printSummary "Businesses" resp body
 
@@ -79,7 +69,7 @@ let testBusinesses () =
 
 let testAccounts (businessSlug: string) =
     task {
-        let url = baseUrl.TrimEnd('/') + $"/v1/business/{businessSlug}/account/?page=1&page_size=5"
+        let url = baseUrl.OriginalString.TrimEnd('/') + $"/v1/business/{businessSlug}/account/?page=1&page_size=5"
         let! (resp, body) = sendGet url
         printSummary "Accounts" resp body
 
@@ -96,7 +86,7 @@ let testAccounts (businessSlug: string) =
     }
 
 let main = task {
-    printfn "Base URL: %s" baseUrl
+    printfn "Base URL: %s" baseUrl.OriginalString
     printfn "Token preview: %s***" (authValue.Substring(0, min 12 authValue.Length))
 
     let! biz = testBusinesses ()

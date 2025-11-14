@@ -4,6 +4,10 @@
 #r "bin/Debug/net9.0/hawaii-client.dll"
 #r "generated/bin/Debug/netstandard2.0/NocfoApi.dll"
 
+#load "TestSupport.fsx"
+open TestSupport
+
+
 open System
 open System.Net
 open System.Net.Http
@@ -15,17 +19,8 @@ open NocfoClient.Http
 open NocfoApi
 open NocfoApi.Types
 
-let baseUrl = Uri("https://api-tst.nocfo.io")
-let token =
-    match Environment.GetEnvironmentVariable "NOCFO_TOKEN" with
-    | null | "" -> failwith "NOCFO_TOKEN not set"
-    | t -> t
-
-let context = Http.createHttpContext baseUrl token
-let client = NocfoApiClient(context.client)
-
 let fetchPage (page: int) =
-    Http.getJson<PaginatedBusinessList> context (Endpoints.businessList page)
+    getJson<PaginatedBusinessList> context (Endpoints.businessList page)
 
 let stream = paginateByPageSRTP fetchPage
 

@@ -5,6 +5,9 @@
 #r "bin/Debug/net9.0/hawaii-client.dll"
 #r "generated/bin/Debug/netstandard2.0/NocfoApi.dll"
 
+#load "TestSupport.fsx"
+open TestSupport
+
 open System
 open FSharp.Control
 open NocfoClient
@@ -12,19 +15,9 @@ open NocfoClient.Streams
 open NocfoClient.Http
 open Nocfo.Domain
 
-let baseUrl = Uri("https://api-tst.nocfo.io")
-let token =
-    match Environment.GetEnvironmentVariable "NOCFO_TOKEN" with
-    | null | "" -> failwith "NOCFO_TOKEN not set"
-    | t -> t
-
 let slug = "demo-720e8e"
 
-let http = Http.createHttpContext baseUrl token
-let accounting = Accounting.ofHttp http
-
 // ===== helpers =====
-let inline dflt (x: decimal option) = x |> Option.defaultValue 0M
 let inline get (m: Map<_,_>) k = m |> Map.tryFind k
 
 let printTotals (totals: AccountClassTotals) =
