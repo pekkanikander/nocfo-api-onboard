@@ -45,7 +45,7 @@ module Http =
     let send (httpClient: HttpClient) (request: HttpRequestMessage) = async {
         if request.Headers.Accept.Count = 0 then
             ignore (withAcceptJson request)
-        printfn "Sending request: %s %s" request.Method.Method request.RequestUri.OriginalString
+        eprintfn "Sending request: %s %s" request.Method.Method request.RequestUri.OriginalString
         use! response = httpClient.SendAsync(request) |> Async.AwaitTask
         let! content = response.Content.ReadAsStringAsync() |> Async.AwaitTask
         if response.IsSuccessStatusCode then
