@@ -16,5 +16,6 @@
     <Compile Include="src/AsyncSeq.fs" />
     <Compile Include="src/Streams.fs" />
     <Compile Include="src/Domain.fs" />
+    <Compile Include="src/CsvHelper.fs" />
   </ItemGroup>
 </Project>

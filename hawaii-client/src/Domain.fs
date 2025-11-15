@@ -185,6 +185,25 @@ module Streams =
 
   let private asDomain r = Result.mapError DomainError.Http r
 
+  let hydrateAndUnwrap<'Full, 'Partial>
+    (entity: AsyncSeq<Result<Hydratable<'Full, 'Partial>, DomainError>>)
+    : AsyncSeq<Result<'Full, DomainError>> =
+    entity
+    |> AsyncSeq.mapAsync (fun result ->
+      // TODO: replace with a version using higher-order functions
+      async {
+        match result with
+        | Error e -> return Error e
+        | Ok (Full full) -> return Ok full
+        | Ok (Partial (_, fetch)) ->
+            let! hydrated = fetch ()
+            match hydrated with
+            | Error e -> return Error e
+            | Ok (Full full) -> return Ok full
+            | Ok (Partial _) -> return Error (DomainError.Unexpected "Entity could not be hydrated")
+      })
+
+
   /// Domain-level stream of businesses, yielding directly Full businesses
   let streamBusinesses (context: AccountingContext) : AsyncSeq<Result<Business, DomainError>> =
     let toDomain (business: NocfoApi.Types.Business) : Business =
