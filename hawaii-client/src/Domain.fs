@@ -13,6 +13,9 @@ type DomainError =
   | Http of Http.HttpError
   | Unexpected of string
 
+module DomainError =
+  let inline asDomain r = Result.mapError DomainError.Http r
+
 /// Generic hydratable wrapper carrying a partial payload and a fetch that upgrades it
 ///
 /// In this domain, we use Full and Partial only to represent the lifecycle.
@@ -121,6 +124,16 @@ module Business =
           return Error (DomainError.Http httpErr)
     })
 
+  let ofRaw (raw: NocfoApi.Types.Business) : Business =
+    let full : BusinessFull =
+      {
+        // XXX fixme: what if there are no identifiers or no slug
+        key  = { id = raw.identifiers.[0]; slug = defaultArg raw.slug "(none)" }
+        meta = { name = raw.name; country = Option.ofObj raw.country };
+        raw  = raw
+      }
+    Business.Full full
+
   let hydrate (business: Business) : Async<Result<Business, DomainError>> =
     match business with
     | Full _ -> async.Return (Ok business)
@@ -131,15 +144,12 @@ module Business =
 ///
 
 module Account =
-  let private mkFetch (context: BusinessContext) (id) : unit -> Async<Result<Account, DomainError>> =
+  let mkFetch (context: BusinessContext) (id) : unit -> Async<Result<Account, DomainError>> =
     fun () ->
       async {
         let! result =
           Http.getJson<AccountFull> context.ctx.http (Endpoints.accountById context.key.slug id)
-        return
-          match result with
-          | Result.Ok account    -> Result.Ok (Account.Full account)
-          | Result.Error httpErr -> Result.Error (DomainError.Http httpErr)
+        return (Result.map (Account.Full) >> DomainError.asDomain) result
       }
 
   let ofRow (context: BusinessContext) (row: AccountRow) : Account =
@@ -183,7 +193,28 @@ module Account =
 
 module Streams =
 
-  let private asDomain r = Result.mapError DomainError.Http r
+  /// Convert a raw stream into a domain stream
+  let toDomain< 'Dom, 'Raw >
+    (ofRaw: 'Raw -> 'Dom)
+    (stream: AsyncSeq<Result<'Raw, HttpError>>)
+    : AsyncSeq<Result<'Dom, DomainError>> =
+    stream
+    |> AsyncSeq.map (Result.map ofRaw >> DomainError.asDomain)
+
+  /// Domain-level stream of businesses, yielding directly Full businesses
+  let streamBusinesses (context: AccountingContext) : AsyncSeq<Result<Business, DomainError>> =
+    Streams.streamPaginated<PaginatedBusinessList, NocfoApi.Types.Business>
+       context.http
+       (fun page -> Endpoints.businessList page)
+    |> toDomain Business.ofRaw
+
+  /// Domain-level stream of accounts for a given business, yielding lazy Partials that can be hydrated to Full on demand
+  let streamAccounts (context: BusinessContext) : AsyncSeq<Result<Account, DomainError>> =
+    Streams.streamPaginated<PaginatedAccountListList, NocfoApi.Types.AccountList>
+       context.ctx.http
+       (fun page -> Endpoints.accountsBySlugPage context.key.slug page)
+    |> toDomain (Account.ofRow context)
+
 
   let hydrateAndUnwrap<'Full, 'Partial>
     (entity: AsyncSeq<Result<Hydratable<'Full, 'Partial>, DomainError>>)
@@ -202,43 +233,3 @@ module Streams =
             | Ok (Full full) -> return Ok full
             | Ok (Partial _) -> return Error (DomainError.Unexpected "Entity could not be hydrated")
       })
-
-
-  /// Domain-level stream of businesses, yielding directly Full businesses
-  let streamBusinesses (context: AccountingContext) : AsyncSeq<Result<Business, DomainError>> =
-    let toDomain (business: NocfoApi.Types.Business) : Business =
-      let slug = defaultArg business.slug "(none)" // XXX fixme
-      Business.Full {
-        // XXX fixme: what if there are no identifiers?
-        key = { id = business.identifiers.[0]; slug = slug };
-        meta = { name = business.name; country = Option.ofObj business.country }
-        raw  = business
-      }
-    NocfoClient.Streams.streamBusinessesRaw context.http
-    |> AsyncSeq.map (Result.map toDomain >> asDomain)
-
-  /// Domain-level stream of accounts for a given business, yielding lazy Partials that can be hydrated to Full on demand
-  let streamAccounts (context: BusinessContext) : AsyncSeq<Result<Account, DomainError>> =
-    let toPartial (row: AccountRow) : Account =
-      Account.Partial (row, fetch = fun () -> async {
-        let! result =
-          Http.getJson<AccountFull>
-            context.ctx.http
-            (Endpoints.accountById context.key.slug (row.id.ToString()))
-        return (Result.map (Account.Full) >> asDomain) result
-      })
-    NocfoClient.Streams.streamAccountListsByBusinessSlug context.ctx.http context.key.slug
-    |> AsyncSeq.map (Result.map toPartial >> asDomain)
-
-module Reports =
-  let addToTotals (totals: AccountClassTotals) (account: Account) : Async<Result<AccountClassTotals, DomainError>> =
-    Account.hydrate account
-    |> AsyncResult.bind (fun hydrated ->
-      match hydrated with
-      | Full full ->
-        let cls = Account.classify full
-        match cls with
-        | Some cls -> Ok (Map.change cls (fun old -> Some ((defaultArg old 0M) + (decimal full.balance))) totals)
-        | None     -> Error (DomainError.Unexpected "Account type is required")
-      | Partial _  -> Error (DomainError.Unexpected "Account is not hydrated")
-    )

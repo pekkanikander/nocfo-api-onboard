@@ -21,13 +21,3 @@ module Streams =
             return result
         }
         paginateByPageSRTP fetchPage
-
-    let streamBusinessesRaw (http: HttpContext) =
-        streamPaginated<PaginatedBusinessList, Business>
-            http
-            (fun page -> Endpoints.businessList page)
-
-    let streamAccountListsByBusinessSlug (http: HttpContext) (businessSlug: string) =
-        streamPaginated<PaginatedAccountListList, AccountList>
-            http
-            (fun page -> Endpoints.accountsBySlugPage businessSlug page)
