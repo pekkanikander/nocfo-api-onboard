@@ -20,6 +20,7 @@ type HttpContext = {
 
 module Http =
     type HttpError = {
+        url: Uri
         statusCode: HttpStatusCode
         body: string
     }
@@ -51,24 +52,59 @@ module Http =
         if response.IsSuccessStatusCode then
             return Ok content
         else
-            return Error { statusCode = response.StatusCode; body = content }
+            eprintfn "Request failed: %s %s %s %s"
+                request.Method.Method
+                request.RequestUri.OriginalString
+                (response.StatusCode.ToString())
+                (content.Substring(0, min 100 content.Length))
+            return Error {
+                url = request.RequestUri
+                statusCode = response.StatusCode
+                body = content
+            }
     }
 
-    let getJson<'T> (httpContext: HttpContext) (path: string)= async {
+    let private deserialize<'T> (url: Uri) (result: Result<string, HttpError>) =
+        match result with
+        | Ok body ->
+            if typeof<'T> = typeof<unit> then
+                Ok (Unchecked.defaultof<'T>) // ()
+            else
+                try
+                    let value = Serializer.deserialize<'T> body
+                    Ok value
+                with ex ->
+                    Error {
+                        url = url
+                        statusCode = enum<HttpStatusCode>(0)
+                        body = $"Decode error: {ex.Message}\nBody: {body}"
+                    }
+        | Error e -> Error e
+
+    let getJson<'T> (httpContext: HttpContext) (path: string) = async {
         let absoluteUrl = Uri(httpContext.client.BaseAddress.OriginalString + path)
         use req =
             new HttpRequestMessage(HttpMethod.Get, absoluteUrl)
             |> withAuth httpContext
             |> withAcceptJson
         let! result = send httpContext.client req
-        match result with
-        | Ok body ->
-            // Serializer.deserialize exceptions, untyped faults.
-            // TODO: Wrap deserialisation in try,
-            // return Error (HttpError{ statusCode = 0; body = "...decode error..." })
-            // or a dedicated DecodeError in a domain error DU.
-            let value = Serializer.deserialize<'T> body
-            return Ok value
-        | Error e ->
-            return Error e
+        return deserialize<'T> absoluteUrl result
+    }
+
+    let private withJsonContent (payload: 'T) (req: HttpRequestMessage) =
+        let json = Serializer.serialize payload
+        req.Content <- new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+        req
+
+    /// PATCH with JSON payload and decode a JSON response body.
+    /// Use when the API returns the updated resource (e.g., 200 + body).
+    let patchJson<'Payload, 'Response> (httpContext: HttpContext) (path: string) (payload: 'Payload) = async {
+        let absoluteUrl = Uri(httpContext.client.BaseAddress.OriginalString + path)
+        use req =
+            new HttpRequestMessage(new HttpMethod("PATCH"), absoluteUrl)
+            |> withAuth httpContext
+            |> withAcceptJson
+            |> withJsonContent payload
+        let! result = send httpContext.client req
+        return deserialize<'Response> absoluteUrl result
     }

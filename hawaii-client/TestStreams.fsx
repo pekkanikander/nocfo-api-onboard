@@ -37,25 +37,18 @@ first7businesses |> List.iteri (fun i (result: Result<Nocfo.Domain.Business, Dom
 
 printfn "Streaming first 7 accounts for first business'...\n"
 
+let businessKey =
+    match first7businesses.[0] with
+    | Ok (Nocfo.Domain.Business.Partial (key, _)) -> key
+    | Ok (Nocfo.Domain.Business.Full full) -> full.key
+    | Error e -> failwithf "Error fetching business: %A" e
+
+let businessContext : BusinessContext = { key = businessKey; ctx = accounting }
+
 let first7accounts =
-
-    let business =
-        match first7businesses.[0] with
-        | Ok business -> business
-        | Error e -> failwithf "Error fetching business: %A" e
-
-    let context : Nocfo.Domain.BusinessContext = {
-        key =
-            match business with
-            | Nocfo.Domain.Business.Partial (key, _) -> key
-            | Nocfo.Domain.Business.Full full -> full.key
-        ctx = accounting
-    }
-    let accounts =
-        Nocfo.Domain.Streams.streamAccounts context
-        |> AsyncSeq.take 7
-        |> AsyncSeq.toListSynchronously
-    accounts
+    Nocfo.Domain.Streams.streamAccounts businessContext
+    |> AsyncSeq.take 7
+    |> AsyncSeq.toListSynchronously
 
 printfn "Fetched %d accounts" first7accounts.Length
 first7accounts |> List.iteri (fun i a ->
@@ -69,3 +62,58 @@ first7accounts |> List.iteri (fun i a ->
     | Nocfo.Domain.Account.Full full ->
         printfn "#%d id=%d number=%s" (i+1) full.id full.number
 )
+
+printfn "\n--- Testing streamPatches: mutate first account number to 9999 and back ---\n"
+
+// Extract first business slug (for URL) and first account id/number (for patching)
+
+let (firstAccountId, originalNumber) =
+    match first7accounts.[0] with
+    | Ok (Nocfo.Domain.Account.Partial (p, _)) -> p.id, p.number
+    | Ok (Nocfo.Domain.Account.Full f) -> f.id, f.number
+    | Error e -> failwithf "Error fetching first account: %A" e
+
+let accountPath = sprintf "/business/%s/account/%d/" businessKey.slug firstAccountId
+printfn "Target account: business=%s accountId=%d path=%s" businessKey.slug firstAccountId accountPath
+printfn "Original number = %s" originalNumber
+
+// Helper to read back the account's current number from the stream
+let getCurrentNumber () =
+    Nocfo.Domain.Streams.streamAccounts businessContext
+    |> AsyncSeq.choose (fun r ->
+        match r with
+        | Ok (Nocfo.Domain.Account.Partial (p, _)) when p.id = firstAccountId -> Some p.number
+        | Ok (Nocfo.Domain.Account.Full f) when f.id = firstAccountId -> Some f.number
+        | _ -> None)
+    |> AsyncSeq.toListSynchronously
+    |> function
+       | n :: _ -> n
+       | [] -> failwithf "Account %d not found when reloading" firstAccountId
+
+// 1) Patch to 9999
+let toNineNineNineNine = AsyncSeq.ofSeq [ {| number = "9999" |} ]
+let step1 =
+    streamPatches<{| number: string |}, unit> accounting.http (fun _ -> accountPath) toNineNineNineNine
+    |> AsyncSeq.toListSynchronously
+
+step1 |> List.iteri (fun i r ->
+    match r with
+    | Ok () -> printfn "PATCH step %d succeeded (-> 9999)" (i+1)
+    | Error e -> printfn "PATCH step %d failed: %A" (i+1) e)
+
+let afterFirst = getCurrentNumber ()
+printfn "After first patch: number = %s (expected 9999)" afterFirst
+
+// 2) Patch back to original
+let backToOriginal = AsyncSeq.ofSeq [ {| number = originalNumber |} ]
+let step2 =
+    streamPatches<{| number: string |}, unit> accounting.http (fun _ -> accountPath) backToOriginal
+    |> AsyncSeq.toListSynchronously
+
+step2 |> List.iteri (fun i r ->
+    match r with
+    | Ok () -> printfn "PATCH step %d succeeded (-> original)" (i+1)
+    | Error e -> printfn "PATCH step %d failed: %A" (i+1) e)
+
+let afterSecond = getCurrentNumber ()
+printfn "After second patch: number = %s (expected %s)" afterSecond originalNumber
