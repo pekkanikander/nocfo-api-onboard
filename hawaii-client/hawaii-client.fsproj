@@ -19,4 +19,7 @@
     <Compile Include="src/Reports.fs" />
     <Compile Include="src/CsvHelper.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="src/hawaii-client.csproj" />
+  </ItemGroup>
 </Project>

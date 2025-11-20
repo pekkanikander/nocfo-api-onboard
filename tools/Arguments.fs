@@ -6,6 +6,7 @@ open System.Linq.Expressions
 open Argu
 open CsvHelper
 open CsvHelper.Configuration
+open Nocfo.CsvHelpers
 
 type NoPrefixAttribute() = inherit CliPrefixAttribute(CliPrefix.None)
 
@@ -65,27 +66,15 @@ module CvsMapping =
 
     let private mapProperty<'T> (map: DefaultClassMap<'T>) (p: PropertyInfo) (index: int) (header: string option) =
         let param = Expression.Parameter(typeof<'T>, "x")
-        let bodyProp = Expression.Property(param, p)
-
-        // Use reflection to call the correct generic Map overload based on property type
-        let propType = p.PropertyType
-        let lambdaType = typedefof<Func<_,_>>.MakeGenericType(typeof<'T>, propType)
-        let lambda = Expression.Lambda(lambdaType, bodyProp, param)
-
-        // Get the Map<'TMember> overload
-        let mapMethod =
-            typeof<DefaultClassMap<'T>>.GetMethods()
-            |> Array.find (fun m ->
-                m.Name = "Map" &&
-                m.IsGenericMethod &&
-                m.GetParameters().Length = 1 &&
-                m.GetParameters().[0].ParameterType.IsGenericType &&
-                m.GetParameters().[0].ParameterType.GetGenericTypeDefinition() = typedefof<Expression<Func<_,_>>>)
-        let mapGeneric = mapMethod.MakeGenericMethod(propType)
-        let mm = mapGeneric.Invoke(map, [| lambda |]) :?> MemberMap
-        let mmIndexed = mm.Index(index)
-        header |> Option.iter (fun h -> mmIndexed.Name(h) |> ignore)
-        mmIndexed |> ignore
+        let bodyProp = Expression.Property(param, p) :> Expression
+        // Box value types to obj for the non-generic Map overload
+        let bodyObj =
+            if p.PropertyType.IsValueType then Expression.Convert(bodyProp, typeof<obj>) :> Expression
+            else bodyProp
+        let lambda : Expression<Func<'T,obj>> = Expression.Lambda<Func<'T, obj>>(bodyObj, param)
+        let mm = CsvMapExtensions.MapBoxed(map, lambda).Index(index)
+        header |> Option.iter (fun h -> mm.Name(h) |> ignore)
+        mm |> ignore
 
     /// Build a CsvHelper DefaultClassMap<'T> that includes only the selected top-level fields, in the given order.
     /// If the list is empty, all public instance fields of 'T are included in declaration order.
