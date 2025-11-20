@@ -2,9 +2,9 @@
 open System.IO
 open Argu
 open FSharp.Control
-open Nocfo.Tools.Arguments
 open Nocfo.Domain
-
+open Nocfo.Tools.Arguments
+open Nocfo.Tools
 
 let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
     let entityTypeAndArgs = args.GetSubCommand()
@@ -16,12 +16,8 @@ let listBusinesses (args: ParseResults<BusinessesArgs>) =
         return 1 // TODO: implement
     }
 
-let listAccounts (args: ParseResults<AccountsArgs>) (fieldList: string list) =
+let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fieldList: string list) =
     async {
-        use input = new StreamReader(Console.OpenStandardInput())
-        use output = new StreamWriter(Console.OpenStandardOutput())
-        let toolContext =
-            Nocfo.Tools.Runtime.ToolConfig.loadOrFail input output
         let output = toolContext.Output
         let writeCsv =
             Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account>
@@ -42,19 +38,19 @@ let listAccounts (args: ParseResults<AccountsArgs>) (fieldList: string list) =
             return 1
     }
 
-let list (args: ParseResults<EntitiesArgs>) =
+let list (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
     async {
         let (entityTypeAndArgs, fieldList) = handleEntitiesArgs args
         eprintfn "entityTypeAndArgs: %A" entityTypeAndArgs
         eprintfn "fieldList: %A" fieldList
         return!
             match entityTypeAndArgs with
-            | EntitiesArgs.Accounts args   -> listAccounts args fieldList
+            | EntitiesArgs.Accounts args   -> listAccounts toolContext args fieldList
             | EntitiesArgs.Businesses args -> listBusinesses args
             | _ -> failwith "Unknown entity type"
     }
 
-let patch (args: ParseResults<EntitiesArgs>) =
+let patch  (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
     async {
         let (entityTypeAndArgs, fields) = handleEntitiesArgs args
         return 0
@@ -63,13 +59,27 @@ let patch (args: ParseResults<EntitiesArgs>) =
 [<EntryPoint>]
 let main argv =
     async {
+
         let parser = ArgumentParser.Create<CliArgs>(programName = "nocfo")
-        let results = parser.ParseCommandLine(argv, raiseOnUsage = false)
+        let results: ParseResults<CliArgs> =
+            parser.ParseCommandLine(argv, raiseOnUsage = false)
+
+        let input : TextReader =
+            match results.TryGetResult CliArgs.In with
+            | Some path -> upcast new StreamReader(path)
+            | None -> Console.In
+
+        let output : TextWriter =
+            match results.TryGetResult CliArgs.Out with
+            | Some path -> upcast new StreamWriter(path)
+            | None -> Console.Out
+        let toolContext = Nocfo.Tools.Runtime.ToolConfig.loadOrFail input output
+
         let subcommand = results.GetSubCommand()
         return!
             match subcommand with
-            | CliArgs.List _  -> list  (results.GetResult List)
-            | CliArgs.Patch _ -> patch (results.GetResult Patch)
+            | CliArgs.List _  -> list  toolContext (results.GetResult List)
+            | CliArgs.Patch _ -> patch toolContext (results.GetResult Patch)
             | _ ->
                 eprintfn "%s" (parser.PrintUsage())
                 async.Return 1

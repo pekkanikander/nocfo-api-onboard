@@ -27,7 +27,6 @@ type ToolConfigError =
     | MissingEnvironmentVariable of string
     | InvalidUri of envVar: string * value: string
 
-[<RequireQualifiedAccess>]
 module Runtime =
 
     [<Literal>]
@@ -43,7 +42,6 @@ module Runtime =
         | ""    -> None
         | value -> Some value
 
-    [<RequireQualifiedAccess>]
     module ToolConfig =
 
         let describeError =
