@@ -1,0 +1,130 @@
+namespace Nocfo.Tools.Arguments
+
+open System
+open System.Reflection
+open System.Linq.Expressions
+open Argu
+open CsvHelper
+open CsvHelper.Configuration
+
+type NoPrefixAttribute() = inherit CliPrefixAttribute(CliPrefix.None)
+
+type BusinessesArgs =
+    | [< Hidden >]             Dummy
+    interface IArgParserTemplate with
+        member this.Usage =
+            match this with
+            | Dummy       -> "Dummy argument for BusinessesArgs."
+
+type AccountsArgs =
+    | [< AltCommandLine("-b"); Mandatory >]       BusinessId of string
+    interface IArgParserTemplate with
+        member this.Usage =
+            match this with
+            | BusinessId _ -> "Business identifier (Y-tunnus|VAT-code)."
+
+[<RequireSubcommand>]
+type EntitiesArgs =
+    | [< AltCommandLine("-i"); Inherit >]         Fields of fields: string list
+    | [< AltCommandLine("-f"); Inherit >]         Format of format: string
+    | [< NoPrefix; SubCommand >]                  Accounts of ParseResults<AccountsArgs>
+    | [< NoPrefix; SubCommand >]                  Businesses of ParseResults<BusinessesArgs>
+    interface IArgParserTemplate with
+        member this.Usage =
+            match this with
+            | Fields _     -> "Comma-separated list of fields to list/patch/... (default: all)."
+            | Format _     -> "Input/outputformat (currently only csv)."
+            | Accounts _   -> "Accounts of a business."
+            | Businesses _ -> "Businesses."
+
+[<RequireSubcommand>]
+type CliArgs =
+    | [< AltCommandLine("-o") >]                  Out   of outPath: string
+    | [< AltCommandLine("-i") >]                  In    of inPath: string
+    | [< NoPrefix; SubCommand >]                  List  of ParseResults<EntitiesArgs>
+    | [< NoPrefix; SubCommand >]                  Patch of ParseResults<EntitiesArgs>
+    interface IArgParserTemplate with
+        member this.Usage =
+            match this with
+            | Out _        -> "Optional CSV output path (default stdout)."
+            | In _         -> "Optional CSV input path (default stdin)."
+            | List _       -> "List entities (businesses, accounts, etc.)."
+            | Patch _      -> "Patch an entity (business, account, etc.)."
+
+
+// -------------------------------
+// CSV mapping for -f/--fields
+// -------------------------------
+
+module CvsMapping =
+    /// Normalize a list into a clean, ordered list.
+    let normalizeFields (fields: string list) : string list =
+        fields
+        |> List.map (fun s -> s.Trim())
+        |> List.filter (fun s -> s <> "")
+
+    let private mapProperty<'T> (map: DefaultClassMap<'T>) (p: PropertyInfo) (index: int) (header: string option) =
+        let param = Expression.Parameter(typeof<'T>, "x")
+        let bodyProp = Expression.Property(param, p)
+
+        // Use reflection to call the correct generic Map overload based on property type
+        let propType = p.PropertyType
+        let lambdaType = typedefof<Func<_,_>>.MakeGenericType(typeof<'T>, propType)
+        let lambda = Expression.Lambda(lambdaType, bodyProp, param)
+
+        // Get the Map<'TMember> overload
+        let mapMethod =
+            typeof<DefaultClassMap<'T>>.GetMethods()
+            |> Array.find (fun m ->
+                m.Name = "Map" &&
+                m.IsGenericMethod &&
+                m.GetParameters().Length = 1 &&
+                m.GetParameters().[0].ParameterType.IsGenericType &&
+                m.GetParameters().[0].ParameterType.GetGenericTypeDefinition() = typedefof<Expression<Func<_,_>>>)
+        let mapGeneric = mapMethod.MakeGenericMethod(propType)
+        let mm = mapGeneric.Invoke(map, [| lambda |]) :?> MemberMap
+        let mmIndexed = mm.Index(index)
+        header |> Option.iter (fun h -> mmIndexed.Name(h) |> ignore)
+        mmIndexed |> ignore
+
+    /// Build a CsvHelper DefaultClassMap<'T> that includes only the selected top-level fields, in the given order.
+    /// If the list is empty, all public instance fields of 'T are included in declaration order.
+    /// Returns Error with the set of unknown field names if any name doesn't match a field on 'T' (case-insensitive).
+    let buildClassMapForFields<'T> (fields: string list) : Result<DefaultClassMap<'T>, string list> =
+        let t = typeof<'T>
+        let props = t.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+        let byNameCI =
+            props
+            |> Array.map (fun p -> p.Name.ToLowerInvariant(), p)
+            |> dict
+        let wanted =
+            match normalizeFields fields with
+            | [] -> props |> Array.toList |> List.map (fun p -> p.Name) // default: all
+            | xs -> xs
+
+        // Resolve names case-insensitively
+        let resolved, missing =
+            (([], []), wanted)
+            ||> List.fold (fun (accOk, accMissing) name ->
+                let key = name.ToLowerInvariant()
+                if byNameCI.ContainsKey key then
+                    (byNameCI.[key] :: accOk, accMissing)
+                else
+                    (accOk, name :: accMissing))
+
+        match missing with
+        | _::_ ->
+            // return unknown names in the order they were requested
+            let missingOrdered =
+                wanted
+                |> List.filter (fun n -> missing |> List.exists (fun m -> String.Equals(m, n, StringComparison.Ordinal)))
+                |> List.distinct
+            Error missingOrdered
+        | [] ->
+            // Keep original order: we collected resolved in reverse; reverse back
+            let orderedProps = resolved |> List.rev
+            let map = DefaultClassMap<'T>()
+            orderedProps
+            |> List.iteri (fun idx (p: PropertyInfo) ->
+                mapProperty map p idx (Some p.Name))
+            Ok map

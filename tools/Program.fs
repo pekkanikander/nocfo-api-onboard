@@ -1,51 +1,43 @@
 ﻿open System
 open Argu
+open Nocfo.Tools.Arguments
 
-type NoPrefixAttribute() = inherit CliPrefixAttribute(CliPrefix.None)
+type EntitiesArgsResult =
+    | Accounts of ParseResults<AccountsArgs>
+    | Businesses of ParseResults<BusinessesArgs>
+    | Unknown
 
-type BusinessesArgs =
-    | [< AltCommandLine("-f") >]                  Fields of fields: string list
-    interface IArgParserTemplate with
-        member this.Usage =
-            match this with
-            | Fields _     -> "Comma-separated list of fields to export (default all)."
+let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
+    let entityType = args.GetSubCommand()
+    let fields = args.GetResult(Fields, defaultValue = [])
+    eprintfn "fields: %A" fields
+    match entityType with
+    | EntitiesArgs.Accounts args ->
+        eprintfn "accounts entity args: %A" args
+        (entityType, (Accounts args), fields)
+    | EntitiesArgs.Businesses args ->
+        eprintfn "businesses entity args: %A" args
+        (entityType, (Businesses args), fields)
+    | _ ->
+        eprintfn "Unknown entity type: %A" entityType
+        (entityType, (Unknown), fields)
 
-type AccountsArgs =
-    | [< AltCommandLine("-b"); Mandatory >]       BusinessId of string
-    | [< AltCommandLine("-f") >]                  Fields of fields: string list
-    interface IArgParserTemplate with
-        member this.Usage =
-            match this with
-            | BusinessId _ -> "Business identifier (Y-tunnus|VAT-code)."
-            | Fields _     -> "Comma-separated list of fields to export (default all)."
+let list (args: ParseResults<EntitiesArgs>) =
+    let (entityType, args, fieldList) = handleEntitiesArgs args
+    let fieldClassMap = CvsMapping.buildClassMapForFields<NocfoApi.Types.Account> fieldList
+    eprintfn "fieldClassMap: %A" fieldClassMap
+    0
 
-type EntitiesArgs =
-    | [< AltCommandLine("-f") >]                  Format of format: string
-    | [< NoPrefix; SubCommand >]                  Accounts of ParseResults<AccountsArgs>
-    | [< NoPrefix; SubCommand >]                  Businesses of ParseResults<BusinessesArgs>
-    interface IArgParserTemplate with
-        member this.Usage =
-            match this with
-            | Format _     -> "Output format (currently only csv)."
-            | Accounts _   -> "Accounts of a business."
-            | Businesses _ -> "Businesses."
-
-type CliArgs =
-    | [< AltCommandLine("-o") >]                  Out   of outPath: string
-    | [< AltCommandLine("-i") >]                  In    of inPath: string
-    | [< NoPrefix; SubCommand >]                  List  of ParseResults<EntitiesArgs>
-    | [< NoPrefix; SubCommand >]                  Patch of ParseResults<EntitiesArgs>
-    interface IArgParserTemplate with
-        member this.Usage =
-            match this with
-            | Out _        -> "Optional CSV output path (default stdout)."
-            | In _         -> "Optional CSV input path (default stdin)."
-            | List _       -> "List entities (businesses, accounts, etc.)."
-            | Patch _      -> "Patch an entity (business, account, etc.)."
+let patch (args: ParseResults<EntitiesArgs>) =
+    let (entityType, args, fields) = handleEntitiesArgs args
+    0
 
 [<EntryPoint>]
 let main argv =
     let parser = ArgumentParser.Create<CliArgs>(programName = "nocfo")
-    let _results = parser.ParseCommandLine(argv, raiseOnUsage = true)
-    printfn "Command line arguments parsed successfully."
-    0
+    let results = parser.ParseCommandLine(argv, raiseOnUsage = false)
+    let subcommand = results.GetSubCommand()
+    match subcommand with
+    | CliArgs.List _  ->   list  (results.GetResult List)
+    | CliArgs.Patch _ ->   patch (results.GetResult Patch)
+    | _               ->   eprintfn "%s" (parser.PrintUsage()); 1
