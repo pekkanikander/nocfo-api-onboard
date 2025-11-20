@@ -1,5 +1,6 @@
 ﻿open System
 open Argu
+open FSharp.Control
 open Nocfo.Tools.Arguments
 open Nocfo.Domain
 
@@ -17,9 +18,17 @@ let listAccounts (args: ParseResults<AccountsArgs>) =
     async {
         let toolContext = Nocfo.Tools.Runtime.ToolConfig.loadOrFail()
         let businessId = args.GetResult(BusinessId, defaultValue = "")
-        let! business = BusinessResolver.resolve toolContext.Accounting businessId
-        eprintfn "business: %A" business
-        return 0
+        let! businessContext  = BusinessResolver.resolve toolContext.Accounting businessId
+        match businessContext with
+        | Ok businessContext ->
+            let! accounts =
+                Streams.streamAccounts businessContext
+                |> AsyncSeq.toListAsync
+            eprintfn "accounts: %A" accounts
+            return 0
+        | Error error ->
+            eprintfn "error: %A" error
+            return 1
     }
 
 let list (args: ParseResults<EntitiesArgs>) =
