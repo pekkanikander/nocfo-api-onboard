@@ -233,3 +233,42 @@ module Streams =
             | Ok (Full full) -> return Ok full
             | Ok (Partial _) -> return Error (DomainError.Unexpected "Entity could not be hydrated")
       })
+
+///
+/// BusinessResolver module operations
+///
+
+module BusinessResolver =
+  /// Build candidate identifiers from a free-form CLI argument.
+  /// Supports prefixes like "Y-tunnus" or "VAT-code"; without a prefix we try both.
+  let private formIdentifierCandidates (input: string) : BusinessIdentifier list =
+    let trimmed = input.Trim()
+
+    [ BusinessIdentifier.Create(BusinessIdentifierTypeEnum.Y_tunnus, trimmed)
+      BusinessIdentifier.Create(BusinessIdentifierTypeEnum.Vat_code, trimmed) ]
+
+  let private identifiersOverlap (candidates: BusinessIdentifier list) (identifier: BusinessIdentifier) =
+    candidates
+    |> List.exists (fun candidate ->
+         candidate.``type`` = identifier.``type`` &&
+         String.Equals(candidate.value, identifier.value, StringComparison.OrdinalIgnoreCase))
+
+  let private businessMatches candidates (full: BusinessFull) =
+    full.raw.identifiers |> List.exists (identifiersOverlap candidates)
+
+  /// Resolve a business identifier string to a BusinessContext.
+  /// Streams businesses, hydrates them, filters by identifier match, and returns the first hit.
+  let resolve (context: AccountingContext) (identifierString: string) : Async<Result<BusinessContext, DomainError>> =
+    async {
+      let candidates = formIdentifierCandidates identifierString
+      let! firstMatch =
+        Streams.streamBusinesses context
+        |> Streams.hydrateAndUnwrap
+        |> AsyncSeq.filter (businessMatches candidates)
+        |> AsyncSeq.tryHead
+
+      match firstMatch with
+      | None ->            return Error (DomainError.Unexpected $"No matching business: {identifierString}")
+      | Some (Error e) ->  return Error e
+      | Some (Ok full) ->  return Ok { ctx = context; key = full.key }
+    }

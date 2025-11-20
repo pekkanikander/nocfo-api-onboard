@@ -1,43 +1,58 @@
 ﻿open System
 open Argu
 open Nocfo.Tools.Arguments
-
-type EntitiesArgsResult =
-    | Accounts of ParseResults<AccountsArgs>
-    | Businesses of ParseResults<BusinessesArgs>
-    | Unknown
+open Nocfo.Domain
 
 let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
-    let entityType = args.GetSubCommand()
+    let entityTypeAndArgs = args.GetSubCommand()
     let fields = args.GetResult(Fields, defaultValue = [])
-    eprintfn "fields: %A" fields
-    match entityType with
-    | EntitiesArgs.Accounts args ->
-        eprintfn "accounts entity args: %A" args
-        (entityType, (Accounts args), fields)
-    | EntitiesArgs.Businesses args ->
-        eprintfn "businesses entity args: %A" args
-        (entityType, (Businesses args), fields)
-    | _ ->
-        eprintfn "Unknown entity type: %A" entityType
-        (entityType, (Unknown), fields)
+    (entityTypeAndArgs, fields)
+
+let listBusinesses (args: ParseResults<BusinessesArgs>) =
+    async {
+        return 1 // TODO: implement
+    }
+
+let listAccounts (args: ParseResults<AccountsArgs>) =
+    async {
+        let toolContext = Nocfo.Tools.Runtime.ToolConfig.loadOrFail()
+        let businessId = args.GetResult(BusinessId, defaultValue = "")
+        let! business = BusinessResolver.resolve toolContext.Accounting businessId
+        eprintfn "business: %A" business
+        return 0
+    }
 
 let list (args: ParseResults<EntitiesArgs>) =
-    let (entityType, args, fieldList) = handleEntitiesArgs args
-    let fieldClassMap = CvsMapping.buildClassMapForFields<NocfoApi.Types.Account> fieldList
-    eprintfn "fieldClassMap: %A" fieldClassMap
-    0
+    async {
+        let (entityTypeAndArgs, fieldList) = handleEntitiesArgs args
+        eprintfn "entityTypeAndArgs: %A" entityTypeAndArgs
+        eprintfn "fieldList: %A" fieldList
+        let fieldClassMap = CvsMapping.buildClassMapForFields<NocfoApi.Types.Account> fieldList
+        eprintfn "fieldClassMap: %A" fieldClassMap
+        return!
+            match entityTypeAndArgs with
+            | EntitiesArgs.Accounts args   -> listAccounts args
+            | EntitiesArgs.Businesses args -> listBusinesses args
+            | _ -> failwith "Unknown entity type"
+    }
 
 let patch (args: ParseResults<EntitiesArgs>) =
-    let (entityType, args, fields) = handleEntitiesArgs args
-    0
+    async {
+        let (entityTypeAndArgs, fields) = handleEntitiesArgs args
+        return 0
+    }
 
 [<EntryPoint>]
 let main argv =
-    let parser = ArgumentParser.Create<CliArgs>(programName = "nocfo")
-    let results = parser.ParseCommandLine(argv, raiseOnUsage = false)
-    let subcommand = results.GetSubCommand()
-    match subcommand with
-    | CliArgs.List _  ->   list  (results.GetResult List)
-    | CliArgs.Patch _ ->   patch (results.GetResult Patch)
-    | _               ->   eprintfn "%s" (parser.PrintUsage()); 1
+    async {
+        let parser = ArgumentParser.Create<CliArgs>(programName = "nocfo")
+        let results = parser.ParseCommandLine(argv, raiseOnUsage = false)
+        let subcommand = results.GetSubCommand()
+        return!
+            match subcommand with
+            | CliArgs.List _  -> list  (results.GetResult List)
+            | CliArgs.Patch _ -> patch (results.GetResult Patch)
+            | _ ->
+                eprintfn "%s" (parser.PrintUsage())
+                async.Return 1
+    } |> Async.RunSynchronously
