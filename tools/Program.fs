@@ -1,8 +1,10 @@
 ﻿open System
+open System.IO
 open Argu
 open FSharp.Control
 open Nocfo.Tools.Arguments
 open Nocfo.Domain
+
 
 let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
     let entityTypeAndArgs = args.GetSubCommand()
@@ -14,20 +16,29 @@ let listBusinesses (args: ParseResults<BusinessesArgs>) =
         return 1 // TODO: implement
     }
 
-let listAccounts (args: ParseResults<AccountsArgs>) =
+let listAccounts (args: ParseResults<AccountsArgs>) (fieldList: string list) =
     async {
-        let toolContext = Nocfo.Tools.Runtime.ToolConfig.loadOrFail()
+        use input = new StreamReader(Console.OpenStandardInput())
+        use output = new StreamWriter(Console.OpenStandardOutput())
+        let toolContext =
+            Nocfo.Tools.Runtime.ToolConfig.loadOrFail input output
+        let output = toolContext.Output
+        let writeCsv =
+            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account>
+                output (Some fieldList)
         let businessId = args.GetResult(BusinessId, defaultValue = "")
         let! businessContext  = BusinessResolver.resolve toolContext.Accounting businessId
         match businessContext with
         | Ok businessContext ->
-            let! accounts =
-                Streams.streamAccounts businessContext
-                |> AsyncSeq.toListAsync
-            eprintfn "accounts: %A" accounts
+            Streams.streamAccounts businessContext
+            |> Streams.hydrateAndUnwrap
+            |> AsyncSeq.map (function
+                | Ok account -> account
+                | Error error -> failwithf "Failed to hydrate account: %A" error)
+            |> writeCsv
+
             return 0
         | Error error ->
-            eprintfn "error: %A" error
             return 1
     }
 
@@ -36,11 +47,9 @@ let list (args: ParseResults<EntitiesArgs>) =
         let (entityTypeAndArgs, fieldList) = handleEntitiesArgs args
         eprintfn "entityTypeAndArgs: %A" entityTypeAndArgs
         eprintfn "fieldList: %A" fieldList
-        let fieldClassMap = CvsMapping.buildClassMapForFields<NocfoApi.Types.Account> fieldList
-        eprintfn "fieldClassMap: %A" fieldClassMap
         return!
             match entityTypeAndArgs with
-            | EntitiesArgs.Accounts args   -> listAccounts args
+            | EntitiesArgs.Accounts args   -> listAccounts args fieldList
             | EntitiesArgs.Businesses args -> listBusinesses args
             | _ -> failwith "Unknown entity type"
     }

@@ -8,6 +8,7 @@ open System.Text
 open CsvHelper
 open CsvHelper.Configuration
 open FSharp.Control
+open Nocfo.Tools.Arguments.CvsMapping
 
 // Depends on your existing helpers:
 open Nocfo.CsvHelpers                 // registerFSharpConvertersFor
@@ -62,31 +63,25 @@ module Csv =
   /// - Writes header once (configurable).
   let writeCsvGeneric<'T>
       (tw      : TextWriter)
+      (fields  : string list option)
       (rows    : AsyncSeq<'T>)
-      (?fields : string list)
-      (?options: WriteOptions) : unit =
-
-    let opts = defaultArg options defaultWriteOptions
-    use csv = mkCsvWriter tw opts
+    =
+    use csv = mkCsvWriter tw defaultWriteOptions
 
     // F# shapes (option<>, list<>, JToken)
     registerConverters<'T> csv
 
     // Apply field selection map (if any)
     let missing = tryRegisterFieldsMap<'T> csv fields
-    match missing, opts.UnknownFieldPolicy with
-    | (_::_ as miss), UnknownFieldPolicy.Fail ->
+    match missing with
+    | (_::_ as miss) ->
         failwithf "Unknown field(s) for %s: %s"
                   typeof<'T>.FullName (String.Join(", ", miss))
-    | (_::_ as miss), UnknownFieldPolicy.WarnAndDrop ->
-        eprintfn "Warning: unknown fields dropped for %s: %s"
-                 typeof<'T>.FullName (String.Join(", ", miss))
     | _ -> ()
 
     // Header
-    if opts.IncludeHeader then
-      csv.WriteHeader<'T>()
-      csv.NextRecord()
+    csv.WriteHeader<'T>()
+    csv.NextRecord()
 
     // Stream rows
     rows
@@ -98,56 +93,6 @@ module Csv =
     csv.Flush()
     tw.Flush()
 
-  /// Synchronous sequence overload (handy for tests/small sets).
-  let writeCsvGenericSeq<'T>
-      (tw      : TextWriter)
-      (rows    : seq<'T>)
-      (?fields : string list)
-      (?options: WriteOptions) : unit =
-
-    let opts = defaultArg options defaultWriteOptions
-    use csv = mkCsvWriter tw opts
-
-    registerConverters<'T> csv
-    let missing = tryRegisterFieldsMap<'T> csv fields
-    match missing, opts.UnknownFieldPolicy with
-    | (_::_ as miss), UnknownFieldPolicy.Fail ->
-        failwithf "Unknown field(s) for %s: %s"
-                  typeof<'T>.FullName (String.Join(", ", miss))
-    | (_::_ as miss), UnknownFieldPolicy.WarnAndDrop ->
-        eprintfn "Warning: unknown fields dropped for %s: %s"
-                 typeof<'T>.FullName (String.Join(", ", miss))
-    | _ -> ()
-
-    if opts.IncludeHeader then
-      csv.WriteHeader<'T>()
-      csv.NextRecord()
-
-    for item in rows do
-      csv.WriteRecord(item)
-      csv.NextRecord()
-
-    csv.Flush()
-    tw.Flush()
-
-  /// Convenience: write to a file path with UTF-8, creating/overwriting the file.
-  let writeCsvFile<'T>
-      (path    : string)
-      (rows    : AsyncSeq<'T>)
-      (?fields : string list)
-      (?options: WriteOptions) : unit =
-    use sw = new StreamWriter(path, false, new UTF8Encoding(encoderShouldEmitUTF8Identifier = false))
-    writeCsvGeneric<'T>(sw, rows, ?fields = fields, ?options = options)
-
-  /// Convenience: write to stdout with UTF-8 (no BOM).
-  let writeCsvStdout<'T>
-      (rows    : AsyncSeq<'T>)
-      (?fields : string list)
-      (?options: WriteOptions) : unit =
-    use sw = new StreamWriter(Console.OpenStandardOutput(),
-                              new UTF8Encoding(encoderShouldEmitUTF8Identifier = false))
-    sw.AutoFlush <- true
-    writeCsvGeneric<'T>(sw, rows, ?fields = fields, ?options = options)
 
 (*
 Usage examples (sketch):

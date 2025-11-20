@@ -3,6 +3,8 @@ namespace Nocfo.Tools
 open NocfoClient
 open Nocfo.Domain
 open System
+open System.IO
+
 
 /// Resolved configuration shared by all CLI commands.
 type ToolConfig =
@@ -16,6 +18,8 @@ type ToolContext =
     {
         Config: ToolConfig
         Accounting: AccountingContext
+        Input: TextReader
+        Output: TextWriter
     }
 
 /// Errors that can occur while materialising `ToolConfig`.
@@ -49,10 +53,10 @@ module Runtime =
             | InvalidUri (name, value) ->
                 $"Environment variable {name} must be an absolute URI (value: {value})."
 
-        let createContext (cfg: ToolConfig) : ToolContext =
+        let createContext (cfg: ToolConfig) (input: TextReader) (output: TextWriter) : ToolContext =
             let httpContext = Http.createHttpContext cfg.BaseUrl cfg.Token
             let accounting = Accounting.ofHttp httpContext
-            { Config = cfg; Accounting = accounting }
+            { Config = cfg; Accounting = accounting; Input = input; Output = output }
 
         let fromEnvironment () =
             let baseUrlResult =
@@ -83,9 +87,9 @@ module Runtime =
                     ]
                 Error errors
 
-        let loadOrFail (): ToolContext =
+        let loadOrFail (input: TextReader) (output: TextWriter): ToolContext =
             match fromEnvironment () with
-            | Ok cfg -> createContext cfg
+            | Ok cfg -> createContext cfg input output
             | Error errors ->
                 let errorMessages = errors |> List.map describeError |> String.concat "\n"
                 failwith $"Tool configuration failed: {errorMessages}"
