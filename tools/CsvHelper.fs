@@ -22,37 +22,36 @@ module Csv =
     | WarnAndDrop
 
   /// Writer options with sensible defaults.
-  type WriteOptions =
+  type IOOptions =
     { Culture            : CultureInfo
       IncludeHeader      : bool
       NewLine            : string
       UnknownFieldPolicy : UnknownFieldPolicy }
 
-  let defaultWriteOptions =
+  let defaultIOOptions =
     { Culture            = CultureInfo.InvariantCulture
       IncludeHeader      = true
       NewLine            = "\n"              // stable across platforms
       UnknownFieldPolicy = UnknownFieldPolicy.Fail }
 
   /// Create a CsvWriter bound to an existing TextWriter.
-  let private mkCsvWriter (tw: TextWriter) (opts: WriteOptions) =
+  let private mkCsvWriter (tw: TextWriter) (opts: IOOptions) =
     let cfg = CsvConfiguration(opts.Culture)
-    cfg.NewLine <- opts.NewLine
     new CsvWriter(tw, cfg)
 
-  /// Register F#-specific converters (option<>, list<>, JToken) for the target type.
-  let private registerConverters<'T> (csv: CsvWriter) =
-    registerFSharpConvertersFor csv typeof<'T>
+  let private mkCsvReader (tr: TextReader) (opts: IOOptions) =
+    let cfg = CsvConfiguration(opts.Culture)
+    new CsvReader(tr, cfg)
 
   /// If fields are provided, build and register a map that selects only those properties of 'T'.
   /// Returns the list of unknown field names (if any).
-  let private tryRegisterFieldsMap<'T> (csv: CsvWriter) (fields: string list option) =
+  let private tryRegisterFieldsMap<'T> (context: CsvContext) (fields: string list option) =
     match fields with
     | None | Some ([] ) -> []
     | Some xs ->
         match buildClassMapForFields<'T> xs with
         | Ok classMap ->
-            csv.Context.RegisterClassMap(classMap)
+            context.RegisterClassMap(classMap)
             []
         | Error missing ->
             missing
@@ -66,13 +65,13 @@ module Csv =
       (fields  : string list option)
       (rows    : AsyncSeq<'T>)
     =
-    use csv = mkCsvWriter tw defaultWriteOptions
+    use csv = mkCsvWriter tw defaultIOOptions
 
     // F# shapes (option<>, list<>, JToken)
-    registerConverters<'T> csv
+    registerFSharpConvertersFor csv.Context typeof<'T>
 
     // Apply field selection map (if any)
-    let missing = tryRegisterFieldsMap<'T> csv fields
+    let missing = tryRegisterFieldsMap<'T> csv.Context fields
     match missing with
     | (_::_ as miss) ->
         failwithf "Unknown field(s) for %s: %s"
@@ -94,19 +93,23 @@ module Csv =
     tw.Flush()
 
 
-(*
-Usage examples (sketch):
+  let readCsvGeneric<'T>
+      (tr: TextReader)
+      (fields: string list option)
+    =
+    use csv = mkCsvReader tr defaultIOOptions
 
-// 1) Businesses → CSV (all columns), to stdout
-Csv.writeCsvStdout<NocfoApi.Types.Business>(
-  businessesAsyncSeq |> AsyncSeq.map (fun b -> b.raw))
+    registerFSharpConvertersFor csv.Context typeof<'T>
 
-// 2) Accounts → CSV with selected columns, to file
-let fields = ["id"; "number"; "name"; "balance"]
-Csv.writeCsvFile<NocfoApi.Types.Account>(
-  "out/accounts.csv",
-  accountsAsyncSeq |> AsyncSeq.map id,       // already Account
-  fields = fields,
-  options = { Csv.defaultWriteOptions with NewLine = "\n"; UnknownFieldPolicy = Csv.UnknownFieldPolicy.WarnAndDrop })
-
-*)
+    let missing = tryRegisterFieldsMap<'T> csv.Context fields
+    match missing with
+    | (_::_ as miss) ->
+        failwithf "Unknown field(s) for %s: %s"
+                  typeof<'T>.FullName (String.Join(", ", miss))
+    | _ -> ()
+    asyncSeq {
+      if csv.Read() then
+        csv.ReadHeader() |> ignore
+        while csv.Read() do
+          yield csv.GetRecord<'T>()
+    }

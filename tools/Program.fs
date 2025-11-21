@@ -11,19 +11,24 @@ let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
     let fields = args.GetResult(Fields, defaultValue = [])
     (entityTypeAndArgs, fields)
 
-let listBusinesses (args: ParseResults<BusinessesArgs>) =
+let listBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) =
     async {
         return 1 // TODO: implement
+    }
+
+let private getBusinessContext (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) =
+    async {
+        let businessId = args.GetResult(BusinessId, defaultValue = "")
+        let! businessContext  = BusinessResolver.resolve toolContext.Accounting businessId
+        return businessContext
     }
 
 let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fieldList: string list) =
     async {
         let output = toolContext.Output
         let writeCsv =
-            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account>
-                output (Some fieldList)
-        let businessId = args.GetResult(BusinessId, defaultValue = "")
-        let! businessContext  = BusinessResolver.resolve toolContext.Accounting businessId
+            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account> output (Some fieldList)
+        let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok businessContext ->
             Streams.streamAccounts businessContext
@@ -38,22 +43,43 @@ let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (
             return 1
     }
 
+let patchBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) =
+    async {
+        return 1 // TODO: implement
+    }
+
+let patchAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
+    async {
+        let f = "id" :: fields
+        let input = toolContext.Input
+        let readCsv =
+            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.Account> input (Some f)
+        let! businessContext  = getBusinessContext toolContext args
+        match businessContext with
+        | Ok businessContext -> ()
+        | Error error -> failwithf "Failed to get business context: %A" error
+        return 1 // TODO: remove this
+    }
+
+// XXX: TODO: Implement an abstract 'command' type and a map of commands to functions.
 let list (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
     async {
-        let (entityTypeAndArgs, fieldList) = handleEntitiesArgs args
-        eprintfn "entityTypeAndArgs: %A" entityTypeAndArgs
-        eprintfn "fieldList: %A" fieldList
+        let (entityTypeAndArgs, fields) = handleEntitiesArgs args
         return!
             match entityTypeAndArgs with
-            | EntitiesArgs.Accounts args   -> listAccounts toolContext args fieldList
-            | EntitiesArgs.Businesses args -> listBusinesses args
+            | EntitiesArgs.Businesses args -> listBusinesses toolContext args
+            | EntitiesArgs.Accounts args   -> listAccounts toolContext args fields
             | _ -> failwith "Unknown entity type"
     }
 
 let patch  (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
     async {
         let (entityTypeAndArgs, fields) = handleEntitiesArgs args
-        return 0
+        return!
+            match entityTypeAndArgs with
+            | EntitiesArgs.Businesses args -> patchBusinesses toolContext args
+            | EntitiesArgs.Accounts args   -> patchAccounts toolContext args fields
+            | _ -> failwith "Unknown entity type"
     }
 
 [<EntryPoint>]
@@ -73,6 +99,7 @@ let main argv =
             match results.TryGetResult CliArgs.Out with
             | Some path -> upcast new StreamWriter(path)
             | None -> Console.Out
+
         let toolContext = Nocfo.Tools.Runtime.ToolConfig.loadOrFail input output
 
         let subcommand = results.GetSubCommand()

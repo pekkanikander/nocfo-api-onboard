@@ -75,9 +75,8 @@ type JTokenCompactConverter() =
 
 /// Inspect the target type and register F#-aware converters for its property types.
 /// This avoids CsvHelper's AutoMap (which can trip on F# shapes via constructor parameter mapping).
-let registerFSharpConvertersFor (csv: CsvWriter) (t: Type) =
-    let cache = csv.Context.TypeConverterCache
-
+let registerFSharpConvertersFor (context: CsvContext) (t: Type) =
+    let cache = context.TypeConverterCache
     let registerForType (pt: Type) =
         if isOption pt then
             let inner = optionInner pt
