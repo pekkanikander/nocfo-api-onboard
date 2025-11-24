@@ -1,8 +1,11 @@
 # Hawaii Client (Iteration 5)
 
-> **Status:** Works with the live NoCFO test environment as of November 2025.
+> **Status:** Works with the live NoCFO test environment as of November 2025.
 
-This folder contains the fifth iteration of our NoCFO API explorations: an F# façade over Hawaii-generated types with lazy streams, hydratable domain entities, and a handful of F# script sandboxes. It is intentionally lightweight so the patterns are easy to lift into other projects.
+This folder contains the fifth iteration of our NoCFO API explorations:
+an F# façade over Hawaii-generated types with lazy streams, hydratable domain entities,
+and a handful of F# script sandboxes.
+It is intentionally lightweight so the patterns are easy to lift into other projects.
 
 ## Layout
 
@@ -65,21 +68,60 @@ Some legacy scripts (`TestAsyncSeq.fsx`, etc.) capture older experiments and may
 
 Use `Domain-design.md` if you need broader architectural context before changing or extracting code.
 
+## Refreshing the OpenAPI spec
+
+The canonical schema in this repo is `../api/openapi.json`.
+Grab a fresh copy from the NoCFO docs endpoint before regenerating the client:
+
+Run `curl` from the repo root:
+
+   ```bash
+   # Test (default)
+   curl --fail --silent --show-error \
+     -H "Accept: application/vnd.oai.openapi+json;version=3.0" \
+     "https://api-tst.nocfo.io/openapi/" \
+     > api/openapi.json
+
+   # Production (if you need parity with live data)
+   curl --fail --silent --show-error \
+     -H "Accept: application/vnd.oai.openapi+json;version=3.0" \
+     "https://api-prd.nocfo.io/openapi/" \
+     > api/openapi.json
+   ```
+
+Commit the updated schema before running Hawaii so the generated sources remain reproducible.
+
 ## Regenerating the Hawaii Output
 
 We keep the generated code checked in so you can build immediately. Regenerate only when the upstream OpenAPI spec changes.
 
-1. Update `../api/openapi.json` with the latest spec.
-2. From `vendor/Hawaii/src`, run the Hawaii CLI against `hawaii-client/nocfo-api-hawaii.json` (see the repository root README for exact commands and the patches we rely on).
-3. Rebuild this project (`dotnet build`) to ensure the regenerated DLL still works with the domain layer.
+1. In `vendor/Hawaii/src`, build your own Hawaii version:
+   ```bash
+   cd vendor/Hawaii/src
+   TBD
+   ```
 
-Our forked Hawaii generator includes fixes for nullable Option generation, enum coercion, and operation name cleanup. If you switch to upstream Hawaii, confirm those changes have landed or copy them across.
+Our forked generator in `vendor/Hawaii` includes fixes for nullable fields,
+enum parsing, and operation name normalization that we relied on during November 2025.
+If you use an upstream Hawaii, cross-check that those fixes have landed.
 
-## Optional: Spec Drift Check
+2. Run the resulting Hawaii CLI against `hawaii-client/nocfo-api-hawaii.json`.
+   For example, under macOS run the following:
+   ```bash
+   vendor/Hawaii/src/bin/Release/net6.0/osx-arm64/publish/Hawaii \
+      --config hawaii-client/nocfo-api-hawaii.json
+   ```
 
-`api-spec-test.sh` can run Schemathesis and Dredd against a live server to spot drift between the spec and production. It is a convenience wrapper; you need `NOCFO_TOKEN` plus local installations (or fallback commands) for Schemathesis, Dredd, `uvx`, and `python3`.
+2. Rebuild this project (`dotnet build`) to ensure the regenerated DLL still works with the domain layer.
 
-Note that running Schemathesis may pollute you server environment. Be careful.
+## Optional: Spec Drift Check (not recommended)
+
+`api-spec-test.sh` can run Schemathesis and Dredd against a live server to spot
+drift between the spec and production.
+It is a convenience wrapper; you need `NOCFO_TOKEN` plus local installations
+(or fallback commands) for Schemathesis, Dredd, `uvx`, and `python3`.
+
+Note that running **Schemathesis may pollute you server environment.** Be careful.
 
 ```bash
 ./api-spec-test.sh --token "$NOCFO_TOKEN" \

@@ -54,12 +54,11 @@ We keep the generator output checked in so you can compile immediately. Regenera
 1. Update `api/openapi.json`.
 2. From the repo root, run Hawaii using the curated configuration:
    ```bash
-   cd vendor/Hawaii/src
-   dotnet run -- --config ../../../hawaii-client/nocfo-api-hawaii.json
+   hawaii --config hawaii-client/nocfo-api-hawaii.json
    ```
 3. Rebuild `hawaii-client/` to ensure the generated assembly still compiles.
 
-Our forked generator (in `vendor/Hawaii`) includes fixes for nullable fields, enum parsing, and operation name normalization that we relied on during November 2025. If you use upstream Hawaii, cross-check that those fixes have landed.
+For a more step-by-step build instructions, see `hawaii-client/README.md`.
 
 ## What Our Approach Demonstrates
 
