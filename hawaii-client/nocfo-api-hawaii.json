@@ -9,6 +9,11 @@
   "overrideSchema": {
     "components": {
       "schemas": {
+        "PatchedAccount": {
+            "required": [
+              "id"
+            ]
+        },
         "PaginatedAccountListList": {
           "properties": {
             "prev": {
@@ -105,6 +110,15 @@
               "format": "uri",
               "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
               "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "AttachmentInstance": {
+          "properties": {
+            "analysis_results": {
+              "type": "string",
+              "nullable": true,
+              "description": "Workaround: Hawaii cannot emit multipart form-data for complex arrays, so this field is downgraded to a plain string placeholder."
             }
           }
         }

@@ -114,6 +114,8 @@ If you use an upstream Hawaii, cross-check that those fixes have landed.
 
 2. Rebuild this project (`dotnet build`) to ensure the regenerated DLL still works with the domain layer.
 
+**Known generator workaround:** `hawaii-client/nocfo-api-hawaii.json` overrides `AttachmentInstance.analysis_results` to a dummy nullable string. Hawaii (as of Nov 2025) cannot serialize multipart fields that are arrays of objects, so this keeps the generated client compiling even though the upload endpoint still accepts the real structure server-side. If you start using that endpoint, revisit the override (or teach Hawaii how to encode complex multipart parts).
+
 ## Optional: Spec Drift Check (not recommended)
 
 `api-spec-test.sh` can run Schemathesis and Dredd against a live server to spot
