@@ -1,7 +1,9 @@
 namespace Nocfo.Domain
 
 open System
+open System.Reflection
 open FSharp.Control
+open Microsoft.FSharp.Reflection
 open NocfoApi.Types
 open NocfoClient
 open NocfoClient.Http
@@ -24,7 +26,11 @@ type Hydratable<'Full,'Partial> =
   | Partial of partial: 'Partial * fetch: (unit -> Async<Result<Hydratable<'Full,'Partial>, DomainError>>)
   | Full    of full:    'Full
 
+/// ------------------------------------------------------------
 /// Accounting model: Businesses, Accounts, and Reports
+/// ------------------------------------------------------------
+
+/// Businesses
 
 /// Businesses are identified by their VAT ID or other similar identifier, and a slug.
 /// This identifier is assumed to be serializable, immutable and stable.
@@ -47,8 +53,11 @@ type BusinessFull = {
 
 /// Business is a hydratable of its full form, with BusinessKey as the partial
 type Business = Hydratable<BusinessFull, BusinessKey>
+type BusinessDelta = NocfoApi.Types.PatchedBusiness // XXX: Not implemented yet
 
+/// ------------------------------------------------------------
 /// Accounts
+/// ------------------------------------------------------------
 
 type AccountClass = Asset | Liability | Equity | Income | Expense
 
@@ -58,11 +67,20 @@ type AccountClassTotals = Map<AccountClass, decimal>
 /// but we don't model that relationship yet, as we don't need it yet.
 type AccountFull  = NocfoApi.Types.Account
 type AccountRow   = NocfoApi.Types.AccountList
+type AccountDelta = NocfoApi.Types.PatchedAccount
 
 /// Account is a hydratable of its full form with AccountRow as the partial
 type Account  = Hydratable<AccountFull, AccountRow>
 
+/// Domain-level account commands expressing intent before hitting HTTP.
+type AccountCommand =
+  | CreateAccount of Account
+  | UpdateAccount of accountId:int * AccountDelta
+  | DeleteAccount of accountId:int
+
+/// ------------------------------------------------------------
 /// Contexts
+/// ------------------------------------------------------------
 
 /// AccountingContext
 /// AccountingContext represents the repository, which at this point is just a HTTP client
@@ -88,9 +106,9 @@ type BusinessContext = {
   key:  BusinessKey
 }
 
-///
+/// ------------------------------------------------------------
 /// Accounting operations
-///
+/// ------------------------------------------------------------
 
 module Accounting =
   let ofHttp (http: HttpContext) : AccountingContext =
@@ -186,6 +204,83 @@ module Account =
     | Some Type92dEnum.EXP_TAX     -> Some Expense
     | Some Type92dEnum.EXP_TAX_PRE -> Some Expense
     | None  -> None
+
+  let private isOptionType (t: Type) =
+    t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>>
+
+  // None is the first case of the option type, hence Array.head is safe
+  let private makeNoneValue (optionType: Type) =
+    let noneCase = FSharpType.GetUnionCases optionType |> Array.head
+    FSharpValue.MakeUnion(noneCase, [||])
+
+  let private tryOptionalValue (optionType: Type) (value: obj) =
+    let caseInfo, fields = FSharpValue.GetUnionFields(value, optionType)
+    if caseInfo.Name = "Some" then Some fields.[0] else None
+
+  let private tryOptionValue (optionType: Type) (value: obj) =
+    if isOptionType optionType then
+      tryOptionalValue optionType value
+    else
+      None
+
+  let private requireProperty<'T> (name: string) : PropertyInfo =
+    match typeof<'T>.GetProperty(name) with
+    | null -> failwithf "%s is missing property '%s'" typeof<'T>.Name name
+    | prop -> prop
+
+  let private propertyMatches<'Full> (full: 'Full) (fieldName: string) (desired: obj) =
+    let prop = requireProperty<AccountFull> fieldName
+    let cval = prop.GetValue(full) // Current value at the server side
+    if isOptionType prop.PropertyType then
+      match tryOptionalValue prop.PropertyType cval with
+      | Some existing -> existing.Equals(desired)
+      | None -> false
+    else
+      cval.Equals(desired)
+
+  let private normalizeDelta< 'Full, 'Delta > (full: 'Full) (delta: 'Delta) =
+    let recordType  = typeof< 'Delta >
+    let fields      = FSharpType.GetRecordFields(recordType)
+    let constructor = FSharpValue.PreComputeRecordConstructor(recordType)
+
+    let normalizeField (field: PropertyInfo) =
+      let original = field.GetValue(delta)
+      if not (isOptionType field.PropertyType) then
+        original
+      else
+        match tryOptionalValue field.PropertyType original with
+        | None -> original
+        | Some desired ->
+            if propertyMatches< 'Full > full field.Name desired then
+              makeNoneValue field.PropertyType
+            else
+              original
+
+    fields
+    |> Array.map normalizeField
+    |> constructor
+    :?> AccountDelta
+
+  let private deltaHasChanges (delta: AccountDelta) =
+    let recordType = typeof<AccountDelta>
+    FSharpType.GetRecordFields(recordType)
+    |> Array.exists (fun field ->
+        field.Name <> "id"
+        && isOptionType field.PropertyType
+        && (field.GetValue(delta)
+            |> tryOptionValue field.PropertyType
+            |> Option.isSome))
+
+  let diffAccount (full: AccountFull) (patched: AccountDelta) : Result<AccountCommand option, DomainError> =
+    let id = patched.id
+    if id <> full.id then
+      Error (DomainError.Unexpected $"Patched account id {id} does not match hydrated account id {full.id}.")
+    else
+      let normalized = normalizeDelta full patched
+      if deltaHasChanges normalized then
+        Ok (Some (AccountCommand.UpdateAccount (id, normalized)))
+      else
+        Ok None
 
 ///
 /// Streams module operations —— maybe to be folded to the previous modules

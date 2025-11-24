@@ -53,7 +53,7 @@ let patchAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) 
         let f = "id" :: fields
         let input = toolContext.Input
         let readCsv =
-            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.Account> input (Some f)
+            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok businessContext -> ()
