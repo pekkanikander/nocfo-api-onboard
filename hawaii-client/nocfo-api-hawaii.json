@@ -1,0 +1,114 @@
+{
+  "schema": "api/openapi.json",
+  "project": "NocfoApi",
+  "output": "generated",
+  "target": "fsharp",
+  "synchronous": false,
+  "asyncReturnType": "async",
+  "resolveReferences": false,
+  "overrideSchema": {
+    "components": {
+      "schemas": {
+        "PaginatedAccountListList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedAttachmentListList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedBusinessList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedContactList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedDocumentList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedEntryList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedInvoiceList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedProductList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        },
+        "PaginatedTagList": {
+          "properties": {
+            "prev": {
+              "type": "string",
+              "nullable": true,
+              "format": "uri",
+              "description": "Live API alias for the pagination back-link; spec only documents 'previous'.",
+              "example": "https://api-tst.nocfo.io/v1/business/?page=2"
+            }
+          }
+        }
+      }
+    }
+  }
+}
