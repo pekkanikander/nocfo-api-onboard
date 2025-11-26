@@ -4019,14 +4019,6 @@
                         },
                         "readOnly": true
                     },
-                    "invoices_sent_this_month": {
-                        "type": "string",
-                        "readOnly": true
-                    },
-                    "monthly_invoice_limit": {
-                        "type": "string",
-                        "readOnly": true
-                    },
                     "is_new_invoicer": {
                         "type": "string",
                         "readOnly": true
@@ -4050,13 +4042,11 @@
                     "has_tags",
                     "id",
                     "identifiers",
-                    "invoices_sent_this_month",
                     "invoicing_tax_code",
                     "is_eligible_for_einvoicing",
                     "is_new_invoicer",
                     "is_trialing",
                     "logo",
-                    "monthly_invoice_limit",
                     "name",
                     "owner_email",
                     "owner_name",
@@ -4071,7 +4061,6 @@
                     "trial_days_left",
                     "trial_progress_percentage",
                     "updated_at",
-                    "vat_period_id"
                 ]
             },
             "BusinessIdentifier": {
@@ -6156,14 +6145,6 @@
                         "items": {
                             "$ref": "#/components/schemas/BusinessIdentifier"
                         },
-                        "readOnly": true
-                    },
-                    "invoices_sent_this_month": {
-                        "type": "string",
-                        "readOnly": true
-                    },
-                    "monthly_invoice_limit": {
-                        "type": "string",
                         "readOnly": true
                     },
                     "is_new_invoicer": {
