@@ -6,6 +6,8 @@ open Nocfo
 open NocfoApi.Types
 open NocfoClient
 open NocfoClient.Http
+open NocfoClient.Streams
+open NocfoClient
 
 /// Domain-level generics
 
@@ -76,6 +78,47 @@ type AccountCommand =
   | CreateAccount of Account
   | UpdateAccount of accountId:int * AccountDelta
   | DeleteAccount of accountId:int
+
+exception DomainStreamException of DomainError
+
+module AsyncSeqResult =
+  let unwrapOrThrow (stream: AsyncSeq<Result<'T, DomainError>>) : AsyncSeq<'T> =
+    stream
+    |> AsyncSeq.map (function
+        | Ok value -> value
+        | Error err -> raise (DomainStreamException err))
+
+module Alignment =
+  let alignAccounts
+    (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
+    (deltas: AsyncSeq<Result<AccountDelta, DomainError>>)
+    : AsyncSeq<Result<AccountFull * AccountDelta, DomainError>> =
+
+    let computation () =
+      let accountsPlain = AsyncSeqResult.unwrapOrThrow accounts
+      let deltasPlain   = AsyncSeqResult.unwrapOrThrow deltas
+
+      NocfoClient.Streams.alignByKey
+        (fun (account: AccountFull) -> account.id)
+        (fun (delta: AccountDelta) -> delta.id)
+        accountsPlain
+        deltasPlain
+      |> AsyncSeq.map (function
+          | StreamAlignment.Aligned (account, delta) -> Ok (account, delta)
+          | StreamAlignment.MissingLeft missing ->
+              let key = missing.id
+              Error (DomainError.Unexpected $"Alignment failure: missing account for CSV id {key}.")
+          | StreamAlignment.MissingRight missing ->
+              let key = missing.id
+              Error (DomainError.Unexpected $"Alignment failure: missing CSV row for account id {key}."))
+
+    asyncSeq {
+      try
+        yield! computation ()
+      with
+      | DomainStreamException err ->
+          yield Error err
+    }
 
 /// ------------------------------------------------------------
 /// Contexts
@@ -215,6 +258,20 @@ module Account =
       else
         Ok None
 
+  let deltasToCommands
+    (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
+    (deltas: AsyncSeq<Result<AccountDelta, DomainError>>)
+    : AsyncSeq<Result<AccountCommand, DomainError>> =
+
+    Alignment.alignAccounts accounts deltas
+    |> AsyncSeq.collect (function
+        | Error err -> AsyncSeq.singleton (Error err)
+        | Ok (account, delta) ->
+            match diffAccount account delta with
+            | Ok (Some command) -> AsyncSeq.singleton (Ok command)
+            | Ok None -> AsyncSeq.empty
+            | Error err -> AsyncSeq.singleton (Error err))
+
 ///
 /// Streams module operations —— maybe to be folded to the previous modules
 ///
@@ -236,7 +293,8 @@ module Streams =
        (fun page -> Endpoints.businessList page)
     |> toDomain Business.ofRaw
 
-  /// Domain-level stream of accounts for a given business, yielding lazy Partials that can be hydrated to Full on demand
+  /// Domain-level stream of accounts for a given business, yielding lazy Partials
+  /// that can be hydrated to Full on demand
   let streamAccounts (context: BusinessContext) : AsyncSeq<Result<Account, DomainError>> =
     Streams.streamPaginated<PaginatedAccountListList, NocfoApi.Types.AccountList>
        context.ctx.http

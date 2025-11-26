@@ -40,15 +40,16 @@ let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (
 
             return 0
         | Error error ->
+            eprintfn "Failed to get business context: %A" error
             return 1
     }
 
-let patchBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) =
+let updateBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) =
     async {
         return 1 // TODO: implement
     }
 
-let patchAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
+let updateAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
     async {
         let f = "id" :: fields
         let input = toolContext.Input
@@ -72,13 +73,13 @@ let list (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
             | _ -> failwith "Unknown entity type"
     }
 
-let patch  (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
+let update  (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
     async {
         let (entityTypeAndArgs, fields) = handleEntitiesArgs args
         return!
             match entityTypeAndArgs with
-            | EntitiesArgs.Businesses args -> patchBusinesses toolContext args
-            | EntitiesArgs.Accounts args   -> patchAccounts toolContext args fields
+            | EntitiesArgs.Businesses args -> updateBusinesses toolContext args
+            | EntitiesArgs.Accounts args   -> updateAccounts toolContext args fields
             | _ -> failwith "Unknown entity type"
     }
 
@@ -106,7 +107,7 @@ let main argv =
         return!
             match subcommand with
             | CliArgs.List _  -> list  toolContext (results.GetResult List)
-            | CliArgs.Patch _ -> patch toolContext (results.GetResult Patch)
+            | CliArgs.Update _ -> update toolContext (results.GetResult Update)
             | _ ->
                 eprintfn "%s" (parser.PrintUsage())
                 async.Return 1

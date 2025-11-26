@@ -23,6 +23,7 @@ module AsyncResult =
     let existsOk p    = liftAsync (Result.existsOk p)
 
 module AsyncSeq =
+    /// XXX: Replace with a lazy version, replacing this eager one
     let inline liftAsync (hof: 'T seq -> 'T option) (ar: AsyncSeq<'T>) : Async<'T option> =
         async {
             let! result = AsyncSeq.toListAsync ar

@@ -33,24 +33,24 @@ type EntitiesArgs =
     interface IArgParserTemplate with
         member this.Usage =
             match this with
-            | Fields _     -> "Comma-separated list of fields to list/patch/... (default: all)."
+            | Fields _     -> "Comma-separated list of fields to list/update/... (default: all)."
             | Format _     -> "Input/outputformat (currently only csv)."
             | Accounts _   -> "Accounts of a business."
             | Businesses _ -> "Businesses."
 
 [<RequireSubcommand>]
 type CliArgs =
-    | [< AltCommandLine("-o") >]                  Out   of outPath: string
-    | [< AltCommandLine("-i") >]                  In    of inPath: string
-    | [< NoPrefix; SubCommand >]                  List  of ParseResults<EntitiesArgs>
-    | [< NoPrefix; SubCommand >]                  Patch of ParseResults<EntitiesArgs>
+    | [< AltCommandLine("-o") >]                  Out    of outPath: string
+    | [< AltCommandLine("-i") >]                  In     of inPath: string
+    | [< NoPrefix; SubCommand >]                  List   of ParseResults<EntitiesArgs>
+    | [< NoPrefix; SubCommand >]                  Update of ParseResults<EntitiesArgs>
     interface IArgParserTemplate with
         member this.Usage =
             match this with
             | Out _        -> "Optional CSV output path (default stdout)."
             | In _         -> "Optional CSV input path (default stdin)."
             | List _       -> "List entities (businesses, accounts, etc.)."
-            | Patch _      -> "Patch an entity (business, account, etc.)."
+            | Update _     -> "Update an entity (business, account, etc.)."
 
 
 // -------------------------------
