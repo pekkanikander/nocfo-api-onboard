@@ -336,52 +336,44 @@ module Streams =
     (commands: AsyncSeq<Result<AccountCommand, DomainError>>)
     : AsyncSeq<Result<AccountResult, DomainError>> =
 
-    let executeCommand
-      (invoke: AsyncSeq<'Payload> -> AsyncSeq<Result<'Response, Http.HttpError>>)
-      (wrap: 'Response -> AccountResult)
-      (payload: 'Payload)
-      : AsyncSeq<Result<AccountResult, DomainError>> =
-      asyncSeq { yield payload }
-      |> invoke
-      |> mapHttpError
-      |> AsyncSeq.map (Result.map wrap)
-
     let patchPath (delta: AccountDelta) =
       Endpoints.accountById context.key.slug (string delta.id)
-
-    let patchesStream =
-      NocfoClient.Streams.streamPatches context.ctx.http patchPath
-
-    let executeUpdate delta =
-      executeCommand
-        patchesStream
-        AccountUpdated
-        delta
 
     let deletePath (accountId: int) =
       Endpoints.accountById context.key.slug (string accountId)
 
-    let deletesStream =
-      NocfoClient.Streams.streamDeletes context.ctx.http deletePath
+    let mapCommandToOperation (command: AccountCommand) =
+      match command with
+      | AccountCommand.UpdateAccount (_, delta) ->
+          Ok (fun () ->
+                Http.patchJson<AccountDelta, AccountFull> context.ctx.http (patchPath delta) delta
+                |> AsyncResult.map AccountUpdated)
+      | AccountCommand.DeleteAccount id ->
+          Ok (fun () ->
+                Http.deleteJson<unit> context.ctx.http (deletePath id)
+                |> AsyncResult.map (fun () -> AccountDeleted id))
+      | AccountCommand.CreateAccount _ ->
+          Error (DomainError.Unexpected "CreateAccount is not supported in this command.")
 
-    let executeDelete accountId =
-      executeCommand
-        deletesStream
-        (fun () -> AccountDeleted accountId)
-        accountId
+    let mapCommandsToOperations (commands: AsyncSeq<Result<AccountCommand, DomainError>>) =
+      commands
+      |> AsyncSeq.map (fun result ->
+          match result with
+          | Ok command -> mapCommandToOperation command
+          | Error err -> Error err)
 
-    commands
-    |> AsyncSeq.collect (function
-        | Error err -> AsyncSeq.singleton (Error err : Result<AccountResult, DomainError>)
-        | Ok command ->
-            match command with
-            | AccountCommand.UpdateAccount (_id, delta) ->
-                // Alignment guarantees delta.id = account.id, so no cross-check needed here.
-                executeUpdate delta
-            | AccountCommand.DeleteAccount id ->
-                executeDelete id
-            | AccountCommand.CreateAccount _ ->
-                AsyncSeq.singleton (Error (DomainError.Unexpected "CreateAccount is not supported in this command.") : Result<AccountResult, DomainError>))
+    asyncSeq {
+      try
+        yield!
+          commands
+          |> mapCommandsToOperations
+          |> AsyncSeqResult.unwrapOrThrow
+          |> NocfoClient.Streams.streamChanges (fun op -> op ())
+          |> mapHttpError
+      with
+      | DomainStreamException err ->
+          yield Error err
+    }
 
 ///
 /// BusinessResolver module operations

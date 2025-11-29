@@ -82,14 +82,16 @@ module Streams =
         }
         paginateByPageSRTP fetchPage
 
-    let private streamChanges<'Payload, 'Response>
+    let streamChanges<'Payload, 'Response>
         (change: 'Payload -> Async<Result<'Response, HttpError>>)
         (source: AsyncSeq<'Payload>)
         : AsyncSeq<Result<'Response, HttpError>> =
         source
         |> AsyncSeq.mapAsync change
 
-    let streamPatches<'Payload, 'Response>
+
+    // TODO: Currently unused. Consider removing.
+    let private streamPatches<'Payload, 'Response>
         (http: HttpContext)
         (getPath: 'Payload -> string)
         (source: AsyncSeq<'Payload>)
@@ -97,6 +99,7 @@ module Streams =
         source |> streamChanges (fun payload ->
             Http.patchJson<'Payload, 'Response> http (getPath payload) payload)
 
+    // TODO: Currently unused. Consider removing.
     let streamDeletes<'Payload>
         (http: HttpContext)
         (getPath: 'Payload -> string)
