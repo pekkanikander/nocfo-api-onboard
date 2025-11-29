@@ -81,30 +81,36 @@ module Http =
                     }
         | Error e -> Error e
 
-    let getJson<'T> (httpContext: HttpContext) (path: string) = async {
-        let absoluteUrl = Uri(httpContext.client.BaseAddress.OriginalString + path)
-        use req =
-            new HttpRequestMessage(HttpMethod.Get, absoluteUrl)
-            |> withAuth httpContext
-            |> withAcceptJson
-        let! result = send httpContext.client req
-        return deserialize<'T> absoluteUrl result
-    }
+    let private sendJson<'Response>
+        (httpContext: HttpContext)
+        (method: HttpMethod)
+        (path: string)
+        (configure: HttpRequestMessage -> HttpRequestMessage)
+        =
+        async {
+            let absoluteUrl = Uri(httpContext.client.BaseAddress.OriginalString + path)
+            use request =
+                new HttpRequestMessage(method, absoluteUrl)
+                |> withAuth httpContext
+                |> withAcceptJson
+                |> configure
+            let! result = send httpContext.client request
+            return deserialize<'Response> absoluteUrl result
+        }
 
     let private withJsonContent (payload: 'T) (req: HttpRequestMessage) =
         let json = Serializer.serialize payload
         req.Content <- new StringContent(json, System.Text.Encoding.UTF8, "application/json")
         req
 
+    let getJson<'T> (httpContext: HttpContext) (path: string) =
+        sendJson<'T> httpContext HttpMethod.Get path id
+
     /// PATCH with JSON payload and decode a JSON response body.
     /// Use when the API returns the updated resource (e.g., 200 + body).
-    let patchJson<'Payload, 'Response> (httpContext: HttpContext) (path: string) (payload: 'Payload) = async {
-        let absoluteUrl = Uri(httpContext.client.BaseAddress.OriginalString + path)
-        use req =
-            new HttpRequestMessage(new HttpMethod("PATCH"), absoluteUrl)
-            |> withAuth httpContext
-            |> withAcceptJson
-            |> withJsonContent payload
-        let! result = send httpContext.client req
-        return deserialize<'Response> absoluteUrl result
-    }
+    let patchJson<'Payload, 'Response> (httpContext: HttpContext) (path: string) (payload: 'Payload) =
+        sendJson<'Response> httpContext HttpMethod.Patch path (withJsonContent payload)
+
+    /// DELETE with JSON response body (e.g., when API returns a payload on delete success)
+    let deleteJson<'Response> (httpContext: HttpContext) (path: string) =
+        sendJson<'Response> httpContext HttpMethod.Delete path id

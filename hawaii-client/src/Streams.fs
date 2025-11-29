@@ -96,3 +96,11 @@ module Streams =
         : AsyncSeq<Result<'Response, HttpError>> =
         source |> streamChanges (fun payload ->
             Http.patchJson<'Payload, 'Response> http (getPath payload) payload)
+
+    let streamDeletes<'Payload>
+        (http: HttpContext)
+        (getPath: 'Payload -> string)
+        (source: AsyncSeq<'Payload>)
+        : AsyncSeq<Result<unit, HttpError>> =
+        source |> streamChanges (fun payload ->
+            Http.deleteJson<unit> http (getPath payload))
