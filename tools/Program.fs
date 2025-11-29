@@ -75,8 +75,11 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>)
                         | Error err -> return Error err
                         | Ok () ->
                             match result with
-                            | Ok account ->
+                            | Ok (AccountUpdated account) ->
                                 printfn "Updated account %d (%s)" account.id account.number
+                                return Ok ()
+                            | Ok (AccountDeleted accountId) ->
+                                printfn "Deleted account %d" accountId
                                 return Ok ()
                             | Error err ->
                                 return Error err

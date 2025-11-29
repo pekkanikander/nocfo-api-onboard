@@ -79,6 +79,11 @@ type AccountCommand =
   | UpdateAccount of accountId:int * AccountDelta
   | DeleteAccount of accountId:int
 
+/// Result of executing an account command.
+type AccountResult =
+  | AccountUpdated of AccountFull
+  | AccountDeleted of int
+
 exception DomainStreamException of DomainError
 
 module AsyncSeqResult =
@@ -278,6 +283,12 @@ module Account =
 
 module Streams =
 
+  let private mapHttpError (stream: AsyncSeq<Result<'T, Http.HttpError>>) : AsyncSeq<Result<'T, DomainError>> =
+    stream
+    |> AsyncSeq.map (function
+        | Ok value -> Ok value
+        | Error err -> Error (DomainError.Http err))
+
   /// Convert a raw stream into a domain stream
   let toDomain< 'Dom, 'Raw >
     (ofRaw: 'Raw -> 'Dom)
@@ -323,20 +334,54 @@ module Streams =
   let executeAccountCommands
     (context: BusinessContext)
     (commands: AsyncSeq<Result<AccountCommand, DomainError>>)
-    : AsyncSeq<Result<AccountFull, DomainError>> =
+    : AsyncSeq<Result<AccountResult, DomainError>> =
+
+    let executeCommand
+      (invoke: AsyncSeq<'Payload> -> AsyncSeq<Result<'Response, Http.HttpError>>)
+      (wrap: 'Response -> AccountResult)
+      (payload: 'Payload)
+      : AsyncSeq<Result<AccountResult, DomainError>> =
+      asyncSeq { yield payload }
+      |> invoke
+      |> mapHttpError
+      |> AsyncSeq.map (Result.map wrap)
+
+    let patchPath (delta: AccountDelta) =
+      Endpoints.accountById context.key.slug (string delta.id)
+
+    let patchesStream =
+      NocfoClient.Streams.streamPatches context.ctx.http patchPath
+
+    let executeUpdate delta =
+      executeCommand
+        patchesStream
+        AccountUpdated
+        delta
+
+    let deletePath (accountId: int) =
+      Endpoints.accountById context.key.slug (string accountId)
+
+    let deletesStream =
+      NocfoClient.Streams.streamDeletes context.ctx.http deletePath
+
+    let executeDelete accountId =
+      executeCommand
+        deletesStream
+        (fun () -> AccountDeleted accountId)
+        accountId
 
     commands
-    |> AsyncSeq.mapAsync (function
-        | Error err -> async { return Error err }
+    |> AsyncSeq.collect (function
+        | Error err -> AsyncSeq.singleton (Error err : Result<AccountResult, DomainError>)
         | Ok command ->
             match command with
-            | AccountCommand.UpdateAccount (id, delta) ->
-                let path = Endpoints.accountById context.key.slug (string id)
-                Http.patchJson<AccountDelta, AccountFull> context.ctx.http path delta
-                |> AsyncResult.mapError DomainError.Http
-            | AccountCommand.CreateAccount _
-            | AccountCommand.DeleteAccount _ ->
-                async { return Error (DomainError.Unexpected "Unsupported account command.") })
+            | AccountCommand.UpdateAccount (_id, delta) ->
+                // Alignment guarantees delta.id = account.id, so no cross-check needed here.
+                executeUpdate delta
+            | AccountCommand.DeleteAccount id ->
+                executeDelete id
+            | AccountCommand.CreateAccount _ ->
+                AsyncSeq.singleton (Error (DomainError.Unexpected "CreateAccount is not supported in this command.") : Result<AccountResult, DomainError>))
 
 ///
 /// BusinessResolver module operations
