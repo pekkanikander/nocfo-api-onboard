@@ -53,13 +53,43 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>)
     async {
         let f = "id" :: fields
         let input = toolContext.Input
-        let readCsv =
+        let csvStream =
             Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
+            |> AsyncSeq.map Ok
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
-        | Ok businessContext -> ()
-        | Error error -> failwithf "Failed to get business context: %A" error
-        return 1 // TODO: remove this
+        | Ok ctx ->
+            let accountStream =
+                Streams.streamAccounts ctx
+                |> Streams.hydrateAndUnwrap
+            let commands =
+                Account.deltasToCommands accountStream csvStream
+            let execution =
+                Streams.executeAccountCommands ctx commands
+
+            let! finalState =
+                execution
+                |> AsyncSeq.foldAsync (fun state result ->
+                    async {
+                        match state with
+                        | Error err -> return Error err
+                        | Ok () ->
+                            match result with
+                            | Ok account ->
+                                printfn "Updated account %d (%s)" account.id account.number
+                                return Ok ()
+                            | Error err ->
+                                return Error err
+                    }) (Ok ())
+
+            match finalState with
+            | Ok () -> return 0
+            | Error err ->
+                eprintfn "Update failed: %A" err
+                return 1
+        | Error error ->
+            eprintfn "Failed to get business context: %A" error
+            return 1
     }
 
 // XXX: TODO: Implement an abstract 'command' type and a map of commands to functions.

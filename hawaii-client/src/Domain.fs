@@ -320,6 +320,24 @@ module Streams =
             | Ok (Partial _) -> return Error (DomainError.Unexpected "Entity could not be hydrated")
       })
 
+  let executeAccountCommands
+    (context: BusinessContext)
+    (commands: AsyncSeq<Result<AccountCommand, DomainError>>)
+    : AsyncSeq<Result<AccountFull, DomainError>> =
+
+    commands
+    |> AsyncSeq.mapAsync (function
+        | Error err -> async { return Error err }
+        | Ok command ->
+            match command with
+            | AccountCommand.UpdateAccount (id, delta) ->
+                let path = Endpoints.accountById context.key.slug (string id)
+                Http.patchJson<AccountDelta, AccountFull> context.ctx.http path delta
+                |> AsyncResult.mapError DomainError.Http
+            | AccountCommand.CreateAccount _
+            | AccountCommand.DeleteAccount _ ->
+                async { return Error (DomainError.Unexpected "Unsupported account command.") })
+
 ///
 /// BusinessResolver module operations
 ///
