@@ -345,29 +345,22 @@ module Streams =
     let mapCommandToOperation (command: AccountCommand) =
       match command with
       | AccountCommand.UpdateAccount (_, delta) ->
-          Ok (fun () ->
+          (fun () ->
                 Http.patchJson<AccountDelta, AccountFull> context.ctx.http (patchPath delta) delta
                 |> AsyncResult.map AccountUpdated)
       | AccountCommand.DeleteAccount id ->
-          Ok (fun () ->
+          (fun () ->
                 Http.deleteJson<unit> context.ctx.http (deletePath id)
                 |> AsyncResult.map (fun () -> AccountDeleted id))
       | AccountCommand.CreateAccount _ ->
-          Error (DomainError.Unexpected "CreateAccount is not supported in this command.")
-
-    let mapCommandsToOperations (commands: AsyncSeq<Result<AccountCommand, DomainError>>) =
-      commands
-      |> AsyncSeq.map (fun result ->
-          match result with
-          | Ok command -> mapCommandToOperation command
-          | Error err -> Error err)
+          raise (DomainStreamException (DomainError.Unexpected "CreateAccount is not supported in this command."))
 
     asyncSeq {
       try
         yield!
           commands
-          |> mapCommandsToOperations
           |> AsyncSeqResult.unwrapOrThrow
+          |> AsyncSeq.map mapCommandToOperation
           |> NocfoClient.Streams.streamChanges (fun op -> op ())
           |> mapHttpError
       with
