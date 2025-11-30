@@ -49,47 +49,67 @@ let updateBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesAr
         return 1 // TODO: implement
     }
 
+let foldCommandResults (results: AsyncSeq<Result<AccountResult, DomainError>>) : Async<int> =
+    async {
+        let! errorCount =
+            results
+            |> AsyncSeq.fold (fun errorCount result ->
+                match result with
+                | Ok (AccountUpdated account) ->
+                    printfn "Updated account %d (%s)" account.id account.number
+                    errorCount
+                | Ok (AccountDeleted accountId) ->
+                    printfn "Deleted account %d" accountId
+                    errorCount
+                | Error err ->
+                    printfn "Command failed: %A" err
+                    errorCount + 1) 0
+        return if errorCount > 0 then 1 else 0
+    }
+
 let updateAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
     async {
         let f = "id" :: fields
         let input = toolContext.Input
-        let csvStream =
-            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
-            |> AsyncSeq.map Ok
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok ctx ->
+            // The desired state of accounts from the CSV file.
+            let csvStream =
+                Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
+                |> AsyncSeq.map Ok
+            // The current state of accounts from the API.
             let accountStream =
                 Streams.streamAccounts ctx
                 |> Streams.hydrateAndUnwrap
-            let commands =
+            // Compute the deltas between the desired and current state.
+            // Convert the deltas to commands. Execute the commands. Return the exit code.
+            return!
                 Account.deltasToCommands accountStream csvStream
-            let execution =
-                Streams.executeAccountCommands ctx commands
+                |> Streams.executeAccountCommands ctx
+                |> foldCommandResults
+        | Error error ->
+            eprintfn "Failed to get business context: %A" error
+            return 1
+    }
 
-            let! finalState =
-                execution
-                |> AsyncSeq.foldAsync (fun state result ->
-                    async {
-                        match state with
-                        | Error err -> return Error err
-                        | Ok () ->
-                            match result with
-                            | Ok (AccountUpdated account) ->
-                                printfn "Updated account %d (%s)" account.id account.number
-                                return Ok ()
-                            | Ok (AccountDeleted accountId) ->
-                                printfn "Deleted account %d" accountId
-                                return Ok ()
-                            | Error err ->
-                                return Error err
-                    }) (Ok ())
-
-            match finalState with
-            | Ok () -> return 0
-            | Error err ->
-                eprintfn "Update failed: %A" err
-                return 1
+let deleteAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
+    async {
+        let f = "id" :: fields
+        let input = toolContext.Input
+        let csvStream =
+            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.AccountList> input (Some f)
+            |> AsyncSeq.map Ok
+        let! businessContext = getBusinessContext toolContext args
+        match businessContext with
+        | Ok ctx ->
+            let commands =
+                csvStream
+                |> AsyncSeq.map (Result.map (fun row -> AccountCommand.DeleteAccount row.id))
+            return!
+                commands
+                |> Streams.executeAccountCommands ctx
+                |> foldCommandResults
         | Error error ->
             eprintfn "Failed to get business context: %A" error
             return 1
@@ -116,6 +136,15 @@ let update  (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
             | _ -> failwith "Unknown entity type"
     }
 
+let delete (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
+    async {
+        let (entityTypeAndArgs, fields) = handleEntitiesArgs args
+        return!
+            match entityTypeAndArgs with
+            | EntitiesArgs.Accounts args -> deleteAccounts toolContext args fields
+            | _ -> failwith "Unknown entity type"
+    }
+
 [<EntryPoint>]
 let main argv =
     async {
@@ -139,8 +168,9 @@ let main argv =
         let subcommand = results.GetSubCommand()
         return!
             match subcommand with
-            | CliArgs.List _  -> list  toolContext (results.GetResult List)
+            | CliArgs.List _   -> list   toolContext (results.GetResult List)
             | CliArgs.Update _ -> update toolContext (results.GetResult Update)
+            | CliArgs.Delete _ -> delete toolContext (results.GetResult Delete)
             | _ ->
                 eprintfn "%s" (parser.PrintUsage())
                 async.Return 1

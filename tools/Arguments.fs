@@ -44,6 +44,7 @@ type CliArgs =
     | [< AltCommandLine("-i") >]                  In     of inPath: string
     | [< NoPrefix; SubCommand >]                  List   of ParseResults<EntitiesArgs>
     | [< NoPrefix; SubCommand >]                  Update of ParseResults<EntitiesArgs>
+    | [< NoPrefix; SubCommand >]                  Delete of ParseResults<EntitiesArgs>
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -51,6 +52,7 @@ type CliArgs =
             | In _         -> "Optional CSV input path (default stdin)."
             | List _       -> "List entities (businesses, accounts, etc.)."
             | Update _     -> "Update an entity (business, account, etc.)."
+            | Delete _     -> "Delete entities (accounts, etc.)."
 
 
 // -------------------------------

@@ -353,7 +353,7 @@ module Streams =
                 Http.deleteJson<unit> context.ctx.http (deletePath id)
                 |> AsyncResult.map (fun () -> AccountDeleted id))
       | AccountCommand.CreateAccount _ ->
-          raise (DomainStreamException (DomainError.Unexpected "CreateAccount is not supported in this command."))
+          raise (DomainStreamException (DomainError.Unexpected "CreateAccount is not supported yet."))
 
     asyncSeq {
       try
