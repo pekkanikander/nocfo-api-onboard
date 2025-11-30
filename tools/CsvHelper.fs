@@ -41,6 +41,8 @@ module Csv =
 
   let private mkCsvReader (tr: TextReader) (opts: IOOptions) =
     let cfg = CsvConfiguration(opts.Culture)
+    // Ignore extra columns in CSV that aren't in the class map
+    cfg.MissingFieldFound <- null
     new CsvReader(tr, cfg)
 
   /// If fields are provided, build and register a map that selects only those properties of 'T'.
@@ -60,12 +62,13 @@ module Csv =
   /// - Registers F# converters.
   /// - Optionally restricts columns via -f/--fields (top-level properties).
   /// - Writes header once (configurable).
+  /// - Returns a lazy AsyncSeq<unit> that writes as it's consumed.
   let writeCsvGeneric<'T>
       (tw      : TextWriter)
       (fields  : string list option)
       (rows    : AsyncSeq<'T>)
-    =
-    use csv = mkCsvWriter tw defaultIOOptions
+    : AsyncSeq<unit> =
+    let csv = mkCsvWriter tw defaultIOOptions
 
     // F# shapes (option<>, list<>, JToken)
     registerFSharpConvertersFor csv.Context typeof<'T>
@@ -78,26 +81,36 @@ module Csv =
                   typeof<'T>.FullName (String.Join(", ", miss))
     | _ -> ()
 
-    // Header
-    csv.WriteHeader<'T>()
-    csv.NextRecord()
+    let mutable disposed = false
+    let dispose () =
+        if not disposed then
+            csv.Flush()
+            tw.Flush()
+            (csv :> IDisposable).Dispose()
+            disposed <- true
 
-    // Stream rows
-    rows
-    |> AsyncSeq.iter (fun item ->
-        csv.WriteRecord(item)
-        csv.NextRecord())
-    |> Async.RunSynchronously
+    asyncSeq {
+        try
+            // Header
+            csv.WriteHeader<'T>()
+            csv.NextRecord()
+            yield ()
 
-    csv.Flush()
-    tw.Flush()
+            // Stream rows
+            yield! rows |> AsyncSeq.map (fun item ->
+                csv.WriteRecord(item)
+                csv.NextRecord()
+            )
+        finally
+            dispose()
+    }
 
 
   let readCsvGeneric<'T>
       (tr: TextReader)
       (fields: string list option)
-    =
-    use csv = mkCsvReader tr defaultIOOptions
+    : AsyncSeq<'T> =
+    let csv = mkCsvReader tr defaultIOOptions
 
     registerFSharpConvertersFor csv.Context typeof<'T>
 
@@ -107,9 +120,19 @@ module Csv =
         failwithf "Unknown field(s) for %s: %s"
                   typeof<'T>.FullName (String.Join(", ", miss))
     | _ -> ()
+
+    let mutable disposed = false
+    let dispose () =
+        if not disposed then
+            (csv :> IDisposable).Dispose()
+            disposed <- true
+
     asyncSeq {
-      if csv.Read() then
-        csv.ReadHeader() |> ignore
-        while csv.Read() do
-          yield csv.GetRecord<'T>()
+        try
+            if csv.Read() then
+                csv.ReadHeader() |> ignore
+                while csv.Read() do
+                    yield csv.GetRecord<'T>()
+        finally
+            dispose()
     }

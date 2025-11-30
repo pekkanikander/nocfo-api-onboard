@@ -14,14 +14,15 @@ let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
 let listBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) (fields: string list) =
     async {
         let output = toolContext.Output
+        let rows =
+            Streams.streamBusinesses toolContext.Accounting
+            |> Streams.hydrateAndUnwrap
+            |> AsyncSeq.map (function
+                | Ok business -> business.raw
+                | Error error -> failwithf "Failed to get business: %A" error)
         let writeCsv =
-            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Business> output (Some fields)
-        Streams.streamBusinesses toolContext.Accounting
-        |> Streams.hydrateAndUnwrap
-        |> AsyncSeq.map (function
-            | Ok business -> business.raw
-            | Error error -> failwithf "Failed to get business: %A" error)
-        |> writeCsv
+            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Business> output (Some fields) rows
+        do! writeCsv |> AsyncSeq.iter ignore
         return 0
     }
 
@@ -35,18 +36,18 @@ let private getBusinessContext (toolContext: ToolContext) (args: ParseResults<Ac
 let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
     async {
         let output = toolContext.Output
-        let writeCsv =
-            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account> output (Some fields)
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok businessContext ->
-            Streams.streamAccounts businessContext
-            |> Streams.hydrateAndUnwrap
-            |> AsyncSeq.map (function
-                | Ok account -> account
-                | Error error -> failwithf "Failed to hydrate account: %A" error)
-            |> writeCsv
-
+            let rows =
+                Streams.streamAccounts businessContext
+                |> Streams.hydrateAndUnwrap
+                |> AsyncSeq.map (function
+                    | Ok account -> account
+                    | Error error -> failwithf "Failed to hydrate account: %A" error)
+            let writeCsv =
+                Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account> output (Some fields) rows
+            do! writeCsv |> AsyncSeq.iter ignore
             return 0
         | Error error ->
             eprintfn "Failed to get business context: %A" error
@@ -107,14 +108,14 @@ let deleteAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>)
         let f = "id" :: fields
         let input = toolContext.Input
         let csvStream =
-            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.AccountList> input (Some f)
+            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
             |> AsyncSeq.map Ok
         let! businessContext = getBusinessContext toolContext args
         match businessContext with
         | Ok ctx ->
             let commands =
                 csvStream
-                |> AsyncSeq.map (Result.map (fun row -> AccountCommand.DeleteAccount row.id))
+                |> AsyncSeq.map (Result.map (fun account -> AccountCommand.DeleteAccount account.id))
             return!
                 commands
                 |> Streams.executeAccountCommands ctx
