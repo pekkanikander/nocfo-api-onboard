@@ -11,9 +11,18 @@ let handleEntitiesArgs (args: ParseResults<EntitiesArgs>) =
     let fields = args.GetResult(Fields, defaultValue = [])
     (entityTypeAndArgs, fields)
 
-let listBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) =
+let listBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) (fields: string list) =
     async {
-        return 1 // TODO: implement
+        let output = toolContext.Output
+        let writeCsv =
+            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Business> output (Some fields)
+        Streams.streamBusinesses toolContext.Accounting
+        |> Streams.hydrateAndUnwrap
+        |> AsyncSeq.map (function
+            | Ok business -> business.raw
+            | Error error -> failwithf "Failed to get business: %A" error)
+        |> writeCsv
+        return 0
     }
 
 let private getBusinessContext (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) =
@@ -23,11 +32,11 @@ let private getBusinessContext (toolContext: ToolContext) (args: ParseResults<Ac
         return businessContext
     }
 
-let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fieldList: string list) =
+let listAccounts (toolContext: ToolContext) (args: ParseResults<AccountsArgs>) (fields: string list) =
     async {
         let output = toolContext.Output
         let writeCsv =
-            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account> output (Some fieldList)
+            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account> output (Some fields)
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok businessContext ->
@@ -121,7 +130,7 @@ let list (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
         let (entityTypeAndArgs, fields) = handleEntitiesArgs args
         return!
             match entityTypeAndArgs with
-            | EntitiesArgs.Businesses args -> listBusinesses toolContext args
+            | EntitiesArgs.Businesses args -> listBusinesses toolContext args fields
             | EntitiesArgs.Accounts args   -> listAccounts toolContext args fields
             | _ -> failwith "Unknown entity type"
     }
