@@ -14,6 +14,7 @@ open Nocfo.Tools.Arguments.CvsMapping
 // Depends on your existing helpers:
 open Nocfo.CsvHelpers                 // registerFSharpConvertersFor
 open Nocfo.Tools.Arguments            // buildClassMapForFields<'T>
+open Newtonsoft.Json.Linq
 
 module private HeaderValidation =
 
@@ -182,6 +183,105 @@ module Csv =
       |> Array.map (fun p -> makeDefault p.PropertyType)
     (fieldsInfo, columnIndexPerField, defaults)
 
+  let private isOptionType (t: Type) =
+    t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>>
+
+  let private isStringCollectionType (t: Type) =
+    if t.IsArray then
+      t.GetElementType() = typeof<string>
+    elif t.IsGenericType then
+      let def = t.GetGenericTypeDefinition()
+      let args = t.GetGenericArguments()
+      args.Length = 1
+      && args.[0] = typeof<string>
+      && (
+           def = typedefof<list<_>>
+           || def = typedefof<System.Collections.Generic.List<_>>
+           || def = typedefof<seq<_>>
+           || def = typedefof<System.Collections.Generic.IEnumerable<_>>
+           || def = typedefof<System.Collections.Generic.IReadOnlyList<_>>
+           || def = typedefof<System.Collections.Generic.IList<_>>
+         )
+    else
+      false
+
+  let private setCollectionFieldValue (csv: CsvReader) (fi: PropertyInfo) (ft: Type) (colIndex: int) =
+    // For now we support only collections of string, split by ';' and trimmed.
+    let rawText = csv.GetField(colIndex)
+    if String.IsNullOrWhiteSpace rawText then
+      None
+    else
+      let elemType =
+        if ft.IsArray then ft.GetElementType()
+        elif ft.IsGenericType then ft.GetGenericArguments().[0]
+        else typeof<string>
+
+      if elemType <> typeof<string> then
+        failwithf "CSV collection field '%s' currently supports only string element types, but got '%s'." fi.Name elemType.FullName
+
+      let parts =
+        rawText.Split(';')
+        |> Array.map (fun s -> s.Trim())
+        |> Array.filter (fun s -> s <> "")
+
+      let valueObj : obj =
+        if ft.IsArray then
+          parts :> obj
+        elif ft.IsGenericType && ft.GetGenericTypeDefinition() = typedefof<list<_>> then
+          // Build an F# list<string> from the array.
+          let listType = typedefof<list<_>>.MakeGenericType(elemType)
+          let cases = FSharpType.GetUnionCases(listType, true)
+          let emptyCase = cases |> Array.find (fun c -> c.Name = "Empty")
+          let consCase  = cases |> Array.find (fun c -> c.Name = "Cons")
+          let mutable listObj = FSharpValue.MakeUnion(emptyCase, [||], true)
+          for idx = parts.Length - 1 downto 0 do
+            listObj <- FSharpValue.MakeUnion(consCase, [| parts.[idx] :> obj; listObj |], true)
+          listObj
+        else
+          // Fallback: keep as string[], which is assignable to IEnumerable<string> etc.
+          parts :> obj
+
+      Some valueObj
+
+  let private setOptionFieldValue (csv: CsvReader) (colIndex: int) (ft: Type) =
+    // ft is option<'a>; read inner type and wrap in Some/None.
+    let innerType = ft.GetGenericArguments().[0]
+
+    // First read the raw text to decide between None and Some.
+    let rawText = csv.GetField(colIndex)
+    if String.IsNullOrWhiteSpace rawText then
+      None
+    else
+      // Non-empty: decide how to parse the inner type.
+      let innerValueObj : obj =
+        if innerType = typeof<JToken> then
+          // Special-case Option<JToken>: interpret the cell as JSON if it looks like JSON,
+          // otherwise as a simple string JValue.
+          let s = rawText.Trim()
+          try
+            if s.StartsWith("{") || s.StartsWith("[") then
+              (JToken.Parse(s) :> obj)
+            else
+              (JValue(s) :> JToken :> obj)
+          with _ ->
+            // Fallback: always treat as string JValue if parsing fails.
+            (JValue(rawText) :> JToken :> obj)
+        elif isStringCollectionType innerType then
+          // option<collection<string>>: parse as a single-cell collection of strings.
+          match setCollectionFieldValue csv null innerType colIndex with
+          | Some v -> v
+          | None -> null
+        else
+          // Scalar option<'a>: delegate to CsvHelper for 'a.
+          csv.GetField(innerType, colIndex)
+
+      let unionCases = FSharpType.GetUnionCases(ft, true)
+      let someCase =
+        unionCases
+        |> Array.find (fun c -> c.Name = "Some")
+      let optValue = FSharpValue.MakeUnion(someCase, [| innerValueObj |], true)
+      Some optValue
+
   let private buildRecordFromCsv<'T> (csv: CsvReader) (fieldsInfo: PropertyInfo[]) (columnIndexPerField: int option[]) (defaults: obj[]) =
     let values = Array.copy defaults
     for i = 0 to fieldsInfo.Length - 1 do
@@ -190,24 +290,16 @@ module Csv =
         let fi = fieldsInfo.[i]
         let ft = fi.PropertyType
 
-        // Special handling for F# option types: read inner type and wrap in Some/None.
-        if ft.IsGenericType && ft.GetGenericTypeDefinition() = typedefof<option<_>> then
-          let innerType = ft.GetGenericArguments().[0]
-
-          // First read the raw text to decide between None and Some.
-          let rawText = csv.GetField(colIndex)
-          if not (String.IsNullOrWhiteSpace rawText) then
-            // Non-empty: convert to the inner type and wrap in Some.
-            let innerValue = csv.GetField(innerType, colIndex)
-            let unionCases = FSharpType.GetUnionCases(ft, true)
-            let someCase =
-              unionCases
-              |> Array.find (fun c -> c.Name = "Some")
-            let optValue = FSharpValue.MakeUnion(someCase, [| innerValue |], true)
-            values.[i] <- optValue
-          // Empty cell => keep default (which is already None)
+        if isOptionType ft then
+          match setOptionFieldValue csv colIndex ft with
+          | Some optValue -> values.[i] <- optValue
+          | None -> () // keep default (None)
+        elif isStringCollectionType ft then
+          match setCollectionFieldValue csv fi ft colIndex with
+          | Some collValue -> values.[i] <- collValue
+          | None -> () // keep default (null or existing collection)
         else
-          // Non-option: let CsvHelper convert directly to the property type.
+          // Non-option, non-collection: let CsvHelper convert directly to the property type.
           let v = csv.GetField(ft, colIndex)
           values.[i] <- v
       | None ->
