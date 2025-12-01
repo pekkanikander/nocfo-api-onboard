@@ -1,9 +1,9 @@
 namespace Nocfo
 
-/// See LESSONS-LEARNED-OPENAPI.md for the rationale and implementation details.
-/// The implementation is based on the following principles:
-/// - The Delta type is a projection of the Full type where fields are made optional.
-///
+// See LESSONS-LEARNED-OPENAPI.md for the rationale and implementation details.
+// The implementation is based on the following principles:
+// - The Delta type is a projection of the Full type where fields are made optional.
+
 open System
 open System.Reflection
 open Microsoft.FSharp.Reflection
