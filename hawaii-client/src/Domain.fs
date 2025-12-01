@@ -94,28 +94,30 @@ module AsyncSeqResult =
         | Error err -> raise (DomainStreamException err))
 
 module Alignment =
-  let alignAccounts
-    (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
-    (deltas: AsyncSeq<Result<AccountDelta, DomainError>>)
-    : AsyncSeq<Result<AccountFull * AccountDelta, DomainError>> =
+
+  let inline alignEntries< ^L, ^R, 'r
+    when ^L : (member id : int)
+     and ^R : (member id : int) >
+    (onAligned     : ^L -> ^R -> Result<'r, DomainError>)
+    (onMissingLeft : ^R -> Result<'r, DomainError>)   // right-only
+    (onMissingRight: ^L -> Result<'r, DomainError>)   // left-only
+    (left          : AsyncSeq<Result<^L, DomainError>>)
+    (right         : AsyncSeq<Result<^R, DomainError>>)
+    : AsyncSeq<Result<'r, DomainError>> =
 
     let computation () =
-      let accountsPlain = AsyncSeqResult.unwrapOrThrow accounts
-      let deltasPlain   = AsyncSeqResult.unwrapOrThrow deltas
+      let leftPlain  = AsyncSeqResult.unwrapOrThrow left
+      let rightPlain = AsyncSeqResult.unwrapOrThrow right
 
       NocfoClient.Streams.alignByKey
-        (fun (account: AccountFull) -> account.id)
-        (fun (delta: AccountDelta) -> delta.id)
-        accountsPlain
-        deltasPlain
+        (fun (l: ^L) -> l.id)
+        (fun (r: ^R) -> r.id)
+        leftPlain
+        rightPlain
       |> AsyncSeq.map (function
-          | StreamAlignment.Aligned (account, delta) -> Ok (account, delta)
-          | StreamAlignment.MissingLeft missing ->
-              let key = missing.id
-              Error (DomainError.Unexpected $"Alignment failure: missing account for CSV id {key}.")
-          | StreamAlignment.MissingRight missing ->
-              let key = missing.id
-              Error (DomainError.Unexpected $"Alignment failure: missing CSV row for account id {key}."))
+          | StreamAlignment.Aligned (l, r) -> onAligned l r
+          | StreamAlignment.MissingLeft  r -> onMissingLeft  r
+          | StreamAlignment.MissingRight l -> onMissingRight l)
 
     asyncSeq {
       try
@@ -124,6 +126,46 @@ module Alignment =
       | DomainStreamException err ->
           yield Error err
     }
+  // Old behaviour, preserver for now. TODO: remove.
+  let alignAccounts
+    (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
+    (deltas  : AsyncSeq<Result<AccountDelta, DomainError>>)
+    =
+
+    let onAligned account delta =
+      Ok (account, delta)
+
+    let onMissingLeft (missingAccount: AccountDelta) =
+      let key = missingAccount.id
+      Error (DomainError.Unexpected $"Alignment failure: missing CSV row for account id {key}.")
+
+    let onMissingRight (missingAccount: AccountFull) =
+      let key = missingAccount.id
+      Error (DomainError.Unexpected $"Alignment failure: missing account for CSV id {key}.")
+
+    alignEntries<AccountFull, AccountDelta, AccountFull * AccountDelta>
+      onAligned onMissingLeft onMissingRight accounts deltas
+
+  // New behaviour, allow CSV file to have missing rows.
+  let alignAccountsPermissive
+    (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
+    (deltas  : AsyncSeq<Result<AccountDelta, DomainError>>)
+    =
+
+    let onAligned (account: AccountFull) (delta: AccountDelta) =
+      Ok (Some (account, delta))
+
+    // MissingLeft: we have a delta (CSV row) but no matching account from API -> still an error.
+    let onMissingLeft (missingDelta: AccountDelta) =
+      let key = missingDelta.id
+      Error (DomainError.Unexpected $"Alignment failure: missing account for CSV id {key}.")
+
+    // MissingRight: we have an account from API but no matching CSV row -> allowed, delta = None.
+    let onMissingRight (_missingAccount: AccountFull) =
+      Ok None
+
+    alignEntries<AccountFull, AccountDelta, Option<AccountFull * AccountDelta>> onAligned onMissingLeft onMissingRight accounts deltas
+
 
 /// ------------------------------------------------------------
 /// Contexts
@@ -268,13 +310,14 @@ module Account =
     (deltas: AsyncSeq<Result<AccountDelta, DomainError>>)
     : AsyncSeq<Result<AccountCommand, DomainError>> =
 
-    Alignment.alignAccounts accounts deltas
+    Alignment.alignAccountsPermissive accounts deltas
     |> AsyncSeq.collect (function
         | Error err -> AsyncSeq.singleton (Error err)
-        | Ok (account, delta) ->
+        | Ok None -> AsyncSeq.empty // No matching account from API -> no command.
+        | Ok (Some (account, delta)) ->
             match diffAccount account delta with
             | Ok (Some command) -> AsyncSeq.singleton (Ok command)
-            | Ok None -> AsyncSeq.empty
+            | Ok None -> AsyncSeq.empty // No changes -> no command.
             | Error err -> AsyncSeq.singleton (Error err))
 
 ///
