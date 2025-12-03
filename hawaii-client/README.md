@@ -28,7 +28,11 @@ hawaii-client/
 └── api-spec-test.sh        # Optional spec-vs-server drift signal (Schemathesis + Dredd)
 ```
 
-Scripts with the `Test*.fsx` prefix expect the compiled library in `bin/Debug` plus the generated DLLs under `generated/bin`. They are small, self-contained experiments rather than polished CLI tools.
+Scripts with the `Test*.fsx` prefix expect the compiled library in `bin/Debug` plus the generated DLLs under `generated/bin`.
+They are small, self-contained experiments rather than polished CLI tools.
+
+The CLI under `../tools` links against this project. When you evolve the domain
+surface or CSV helpers, remember that the CLI depends on those modules directly.
 
 ## Prerequisites
 
@@ -36,6 +40,7 @@ Scripts with the `Test*.fsx` prefix expect the compiled library in `bin/Debug` p
 - Access to the NoCFO API and a valid personal access token.
 - `NOCFO_TOKEN` exported in your shell.
 - The base URL defaults to `https://api-tst.nocfo.io`, the test environment.
+- Optional: `NOCFO_BASE_URL` if you need to point at another cluster; it must be an absolute URI.
 
 Token management portals:
 - Test: <https://login-tst.nocfo.io/auth/tokens/>
@@ -60,13 +65,38 @@ Some legacy scripts (`TestAsyncSeq.fsx`, etc.) capture older experiments and may
 
 ## How the Pieces Fit
 
-- `Http.createHttpContext` attaches the `Authorization: Token <value>` header per request and normalises the base URL (`/v1` suffix).
-- `AsyncSeqHelpers.paginateByPageSRTP` materialises paginated endpoints as `AsyncSeq<Result<'Item, HttpError>>`.
-- `Streams` modules wrap the generator output into our own domain surface, enforcing business scoping and yielding hydratable entities.
-- `Domain.Hydratable` defers expensive fetches (Account detail, Business metadata) until explicitly hydrated.
-- `Reports.addToTotals` demonstrates how pure folds sit on top of the streaming layer.
+- `Http.createHttpContext` normalises the base URL (always `/v1`) and attaches `Authorization: Token <value>` to each request. All HTTP helpers surface `HttpError` to keep error handling explicit.
+- `AsyncSeqHelpers.paginateByPageSRTP` expresses “fetch page → yield results → follow `next`” as an `AsyncSeq<Result<'a,_>>`, preserving ordering and letting callers apply back-pressure.
+- `Streams.streamBusinesses` / `streamAccounts` wrap generated DTOs in domain types, ensuring we always carry hydration hooks inside `Hydratable`.
+- `Domain.Hydratable` plus `Streams.hydrateAndUnwrap` give consumers (CLI + scripts) the choice between lazy partials and eagerly hydrated entities.
+- `Account.deltasToCommands` aligns CSV edits against live API state (rows ordered by `id`) and emits `AccountCommand`s
+- `Streams.executeAccountCommands` interprets commands and converts them into HTTP API calls.
+- `Reports.addToTotals` shows how to write deterministic folds on top of the streaming surface; treat it as a template for new reporting modules.
 
-Use `Domain-design.md` if you need broader architectural context before changing or extracting code.
+Use `Domain-design.md` for the higher-level rationale before touching alignment logic or hydration semantics.
+
+## How `tools/` depends on this project
+
+`dotnet run --project tools -- …` is a thin Argu-based CLI that reuses nearly every module here:
+
+- `Nocfo.Tools.Runtime` builds on `Http.createHttpContext` + `Accounting.ofHttp`.
+- `BusinessResolver.resolve` (from `Domain.fs`) is how the CLI maps free-form IDs to a `BusinessContext`.
+- `Streams.streamBusinesses` / `streamAccounts` plus `hydrateAndUnwrap` provide the listing flows.
+- `Account.deltasToCommands` + `Streams.executeAccountCommands` implement `update`/`delete`.
+- `Nocfo.CsvHelpers` defines the CsvHelper converters that keep our CSV exports/imports deterministic.
+
+If you add or rename domain types, plan to update both this README and `tools/README.md` so users understand which commands are affected.
+
+## Extending the client
+
+1. Add or adjust paths in `src/Endpoints.fs`.
+2. Compose a stream using `Streams.streamPaginated` or a custom AsyncSeq that fetches the endpoint and maps DTOs into domain types.
+3. If the entity benefits from lazy hydration, create a `Hydratable` wrapper similar to `Account`.
+4. Extend `Domain` with diff/command helpers so CLI-style workflows stay declarative.
+5. Add CSV helpers (if needed) and expose them via a script or CLI command to exercise the flow end-to-end.
+
+The `Account` modules are the most complete example of this pattern (listing, delta computation, execution).
+Mirror that approach for new entities (e.g., documents, transactions).
 
 ## Refreshing the OpenAPI spec
 
@@ -114,7 +144,11 @@ If you use an upstream Hawaii, cross-check that those fixes have landed.
 
 2. Rebuild this project (`dotnet build`) to ensure the regenerated DLL still works with the domain layer.
 
-**Known generator workaround:** `hawaii-client/nocfo-api-hawaii.json` overrides `AttachmentInstance.analysis_results` to a dummy nullable string. Hawaii (as of Nov 2025) cannot serialize multipart fields that are arrays of objects, so this keeps the generated client compiling even though the upload endpoint still accepts the real structure server-side. If you start using that endpoint, revisit the override (or teach Hawaii how to encode complex multipart parts).
+**Known generator workaround:**
+`hawaii-client/nocfo-api-hawaii.json` overrides `AttachmentInstance.analysis_results` to a dummy nullable string.
+Hawaii (as of Nov 2025) cannot serialize multipart fields that are arrays of objects,
+so this keeps the generated client compiling even though the upload endpoint still accepts the real structure server-side.
+If you start using that endpoint, revisit the override (or teach Hawaii how to encode complex multipart parts).
 
 ## Optional: Spec Drift Check (not recommended)
 
@@ -137,8 +171,9 @@ The script produces a short Markdown summary alongside the raw JUnit/HAR artifac
 ## What’s Next (if you continue)
 
 - Harden error handling in `Http.getJson` (decode errors, retries, structured failures).
-- Extend `Domain.Streams` to other endpoints (transactions, documents).
-- Introduce property-based regression tests around pagination and idempotent hydration.
+- Extend `Domain.Streams` to other endpoints (transactions, documents) so the CLI can manage more entities.
+- Introduce property-based regression tests around pagination, alignment, and idempotent hydration.
+- Factor `StreamAlignment` into its own package (or upstream to Hawaii) to reduce duplication.
 - Upstream the Hawaii generator patch set instead of pinning to the local fork.
 
 Until then, treat this folder as a living notebook of the first workable Hawaii-based NoCFO client. Lift ideas, refactor freely, and keep the scripts runnable so future explorers can reproduce the flows quickly.

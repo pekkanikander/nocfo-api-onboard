@@ -16,40 +16,103 @@ If you are evaluating NoCFO, experimenting with functional programming against f
 
 - `hawaii-client/` – F# library + scripts using Hawaii-generated types, lazy `AsyncSeq` streams, and a thin domain layer. Start here.
 - `api/openapi.json` – The upstream NoCFO OpenAPI document used for generation.
+- `tools/` – CSV-first CLI (“nocfo”) built on top of the Hawaii F# client library; see `tools/README.md`.
 - `requests/` – Raw HTTP checks (VS Code REST client format) used to validate authentication and pagination manually.
 - `v1-typescript/`, `v2-purescript/`, `v3-fsharp/`, `v4-fsharp/` – Earlier experiments (kept for historical context; expect incomplete or abandoned code).
 - `vendor/Hawaii/` – Forked generator with small fixes for nullable handling, enum tolerance, and operation name cleanup.
 - `LESSONS-LEARNED.md`, `hawaii-client/Domain-design.md`, `v5-fsharp-hawaii.md` – Narrative notes about decisions, trade-offs, and follow-up ideas.
 
-## Getting Started (hawaii-client)
+## Quick Start: `nocfo` CLI (tools/)
+
+The CLI in `tools/` is the easiest way to interact with the API. It streams
+entities, writes them as CSV, and can reconcile edited rows back to the server.
 
 1. **Prerequisites**
-   - .NET 9 SDK (`dotnet --version` ≥ 9.0).
-   - A NoCFO personal access token with API access.
-   - macOS or Linux shell (examples assume zsh/bash, but the code itself is cross-platform).
+   - .NET 9 SDK (`dotnet --version` ≥ 9.0)
+   - macOS or Linux shell (the code itself is cross-platform)
+   - `NOCFO_TOKEN` exported; optionally `NOCFO_BASE_URL` (defaults to `https://api-tst.nocfo.io`)
 
-2. **Restore and build**
-   ```bash
-   cd hawaii-client
-   dotnet build
-   ```
-
-3. **Provide credentials**
    ```bash
    export NOCFO_TOKEN="paste-your-token"
    ```
 
-4. **Run the trial balance script**
+2. **Build once** (from repo root):
+   ```bash
+   dotnet build hawaii-client
+   ```
+
+3. **List businesses**:
+   ```bash
+   dotnet run --project tools -- \
+     list businesses --fields "id,name,slug" > businesses.csv
+   ```
+
+4. **List accounts for a business** (rows ordered by `id`):
+   ```bash
+   dotnet run --project tools -- list accounts \
+     -b <business-id> \
+     --fields "id,number,name,type" > accounts.csv
+   ```
+
+5. **Update accounts** by editing the CSV (keep `id` and ordering) and piping it
+   back in:
+   ```bash
+   dotnet run --project tools -- update accounts \
+     -b <business-id> \
+     --fields "id,number,name" < accounts.csv
+   ```
+
+6. **Delete accounts** by piping a CSV with the account `id`s you want to drop:
+   ```bash
+   dotnet run --project tools -- delete accounts \
+     -b <business-id> < ids-to-delete.csv
+   ```
+
+### CLI Notes
+
+- `--fields` controls both which columns are emitted and which columns are read back.
+  `id` is always required when executing updates or deletes.
+- Output defaults to stdout and input defaults to stdin; `--out`/`--in` override
+  those streams without shell redirection.
+- Currently implemented verbs: `list businesses`, `list accounts`, `update accounts`,
+  `delete accounts`. Business updates and account creation are stubbed and return exit code `1`.
+- Errors and HTTP traces go to stderr so you can keep piping stdout to files.
+
+See `tools/README.md` for a deeper dive into configuration, CSV expectations,
+and the internal architecture.
+
+## Working Directly with `hawaii-client`
+
+If you want to hack on the streaming library itself (e.g., extend the domain
+model or write new folds), the various test scripts under `hawaii-client/` may be useful.
+
+1. **Prerequisites** – same as above.
+2. **Build**:
+   ```bash
+   cd hawaii-client
+   dotnet build
+   ```
+3. **Set your token**:
+   ```bash
+   export NOCFO_TOKEN="paste-your-token"
+   ```
+4. **Run a script**:
    ```bash
    dotnet fsi TestBalance.fsx
    ```
-   The script streams accounts for a demo business, hydrates each account on demand, and folds balances by class before printing a trial balance.
+   The script streams accounts for a demo business, hydrates each account on demand,
+   and folds balances by class before printing a trial balance.
 
-For a more step-by-step walkthrough, see `hawaii-client/README.md`.
+Consult `hawaii-client/README.md` for a tour of the modules and guidance on
+regeneration, extending AsyncSeq wrappers, or writing new reports.
 
 ## Regenerating the Hawaii Client
 
-We keep the generator output checked in so you can compile immediately. Regeneration is only needed when the NoCFO OpenAPI spec changes.
+In the future, we will keep the generator output checked in so you can compile immediately.
+At this point, before the first real release, you still need to generate the Hawaii-generated code yourself.
+You also need your own Hawaii build.
+
+In general, regeneration is only needed when the NoCFO OpenAPI spec changes.
 
 1. Update `api/openapi.json`.
 2. From the repo root, run Hawaii using the curated configuration:
