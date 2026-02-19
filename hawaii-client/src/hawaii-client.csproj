@@ -1,7 +1,7 @@
 <!-- hawaii-client/hawaii-client.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>Nocfo.CsvHelpers</AssemblyName>
     <RootNamespace>Nocfo.CsvHelpers</RootNamespace>
     <Nullable>enable</Nullable>

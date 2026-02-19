@@ -4,7 +4,7 @@
 #r "nuget: CsvHelper, 30.0.1"
 
 
-#r "bin/Debug/net9.0/hawaii-client.dll"
+#r "bin/Debug/net10.0/hawaii-client.dll"
 #r "generated/bin/Debug/netstandard2.0/NocfoApi.dll"
 
 // Load shared env + basics (token, baseUrl)

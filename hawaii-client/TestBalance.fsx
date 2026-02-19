@@ -2,7 +2,7 @@
 #r "nuget: FSharp.Control.AsyncSeq, 3.2.1"
 #r "nuget: Newtonsoft.Json, 13.0.1"
 #r "nuget: Fable.Remoting.Json, 2.18.0"
-#r "bin/Debug/net9.0/hawaii-client.dll"
+#r "bin/Debug/net10.0/hawaii-client.dll"
 #r "generated/bin/Debug/netstandard2.0/NocfoApi.dll"
 
 #load "TestSupport.fsx"
