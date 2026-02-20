@@ -54,7 +54,14 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      --fields "id,number,name,type" > accounts.csv
    ```
 
-5. **Update accounts** by editing the CSV (keep `id` and ordering) and piping it
+5. **List documents for a business**:
+   ```bash
+   dotnet run --project tools -- list documents \
+     -b <business-id> \
+     --fields "id,number,date,balance" > documents.csv
+   ```
+
+6. **Update accounts** by editing the CSV (keep `id` and ordering) and piping it
    back in:
    ```bash
    dotnet run --project tools -- update accounts \
@@ -62,7 +69,7 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      --fields "id,number,name" < accounts.csv
    ```
 
-6. **Delete accounts** by piping a CSV with the account `id`s you want to drop:
+7. **Delete accounts** by piping a CSV with the account `id`s you want to drop:
    ```bash
    dotnet run --project tools -- delete accounts \
      -b <business-id> < ids-to-delete.csv
@@ -74,8 +81,8 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
   `id` is always required when executing updates or deletes.
 - Output defaults to stdout and input defaults to stdin; `--out`/`--in` override
   those streams without shell redirection.
-- Currently implemented verbs: `list businesses`, `list accounts`, `update accounts`,
-  `delete accounts`. Business updates and account creation are stubbed and return exit code `1`.
+- Currently implemented verbs: `list businesses`, `list accounts`, `list documents`, `update accounts`,
+  `delete accounts`. Documents are currently list-only, and business updates/account creation are still stubbed.
 - Errors and HTTP traces go to stderr so you can keep piping stdout to files.
 
 See `tools/README.md` for a deeper dive into configuration, CSV expectations,

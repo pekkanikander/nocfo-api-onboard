@@ -14,41 +14,6 @@
               "id"
             ]
         },
-        "Business": {
-          "required": [
-            "apix_transfer_id",
-            "apix_transfer_key",
-            "apix_unique_id",
-            "can_invoice",
-            "country",
-            "country_config",
-            "created_at",
-            "demo_days_left",
-            "einvoicing_address",
-            "einvoicing_operator",
-            "has_business_address",
-            "has_tags",
-            "id",
-            "identifiers",
-            "invoicing_tax_code",
-            "is_billable",
-            "is_eligible_for_einvoicing",
-            "is_new_invoicer",
-            "logo",
-            "name",
-            "owner_email",
-            "owner_name",
-            "period_id",
-            "salaxy_account_id",
-            "salaxy_enabled",
-            "stripe_customer_id",
-            "stripe_plan_status",
-            "stripe_subscription_id",
-            "subscription_plan",
-            "subscription_source",
-            "updated_at"
-          ]
-        },
         "DocumentList": {
           "properties": {
             "audit_trail_last_seen_at": {
