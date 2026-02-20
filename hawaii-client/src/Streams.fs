@@ -90,8 +90,7 @@ module Streams =
         |> AsyncSeq.mapAsync change
 
 
-    // TODO: Currently unused. Consider removing.
-    let private streamPatches<'Payload, 'Response>
+    let streamPatches<'Payload, 'Response>
         (http: HttpContext)
         (getPath: 'Payload -> string)
         (source: AsyncSeq<'Payload>)

@@ -59,7 +59,7 @@ let testing<'T> (sw: StreamWriter) (stream: AsyncSeq<'T>) =
 let writeCsvGeneric<'T> (sw: StreamWriter) (stream: AsyncSeq<'T>) =
     use csv = new CsvWriter(sw, csvConfig)
     // Prepare mapping with F# converters for the target type
-    registerFSharpConvertersFor csv (typeof<NocfoApi.Types.Business>)
+    Nocfo.CsvHelpers.registerFSharpConvertersFor csv.Context (typeof<NocfoApi.Types.Business>)
     csv.WriteHeader<'T>()
     csv.NextRecord()
     stream

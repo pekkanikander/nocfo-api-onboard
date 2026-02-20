@@ -93,7 +93,7 @@ let getCurrentNumber () =
 // 1) Patch to 9999
 let toNineNineNineNine = AsyncSeq.ofSeq [ {| number = "9999" |} ]
 let step1 =
-    streamPatches<{| number: string |}, unit> accounting.http (fun _ -> accountPath) toNineNineNineNine
+    Streams.streamPatches<{| number: string |}, unit> accounting.http (fun _ -> accountPath) toNineNineNineNine
     |> AsyncSeq.toListSynchronously
 
 step1 |> List.iteri (fun i r ->
