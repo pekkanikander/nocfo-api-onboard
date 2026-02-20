@@ -14,6 +14,23 @@
               "id"
             ]
         },
+        "Document": {
+          "required": [
+            "audit_trail_has_unseen_actions",
+            "balance",
+            "blueprint_type",
+            "contact_name",
+            "created_at",
+            "entry_ui_rows",
+            "has_ai_generated_description",
+            "id",
+            "import_data",
+            "is_locked",
+            "number",
+            "period",
+            "updated_at"
+          ]
+        },
         "PaginatedAccountListList": {
           "properties": {
             "prev": {

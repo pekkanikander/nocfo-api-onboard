@@ -84,6 +84,19 @@ type AccountResult =
   | AccountUpdated of AccountFull
   | AccountDeleted of int
 
+/// ------------------------------------------------------------
+/// Documents
+/// ------------------------------------------------------------
+
+/// Documents currently use the same DTO shape for both listing and full payloads.
+/// We still wrap them in Hydratable to keep the same domain pattern as accounts.
+type DocumentFull = NocfoApi.Types.Document
+type DocumentRow  = NocfoApi.Types.Document
+type Document     = Hydratable<DocumentFull, DocumentRow>
+
+/// ------------------------------------------------------------
+/// Domain-level error channel (extend as needed)
+/// ------------------------------------------------------------
 exception DomainStreamException of DomainError
 
 module AsyncSeqResult =
@@ -321,6 +334,19 @@ module Account =
             | Error err -> AsyncSeq.singleton (Error err))
 
 ///
+/// Document module operations
+///
+
+module Document =
+  let ofRaw (raw: DocumentFull) : Document =
+    Hydratable.Full raw
+
+  let hydrate (doc: Document) : Async<Result<Document, DomainError>> =
+    match doc with
+    | Full _ -> async.Return (Ok doc)
+    | Partial (_row, fetch) -> fetch ()
+
+///
 /// Streams module operations —— maybe to be folded to the previous modules
 ///
 
@@ -354,6 +380,13 @@ module Streams =
        context.ctx.http
        (fun page -> Endpoints.accountsBySlugPage context.key.slug page)
     |> toDomain (Account.ofRow context)
+
+  /// Domain-level stream of documents for a given business.
+  let streamDocuments (context: BusinessContext) : AsyncSeq<Result<Document, DomainError>> =
+    Streams.streamPaginated<PaginatedDocumentList, DocumentFull>
+       context.ctx.http
+       (fun page -> Endpoints.documentsBySlugPage context.key.slug page)
+    |> toDomain Document.ofRaw
 
 
   let hydrateAndUnwrap<'Full, 'Partial>

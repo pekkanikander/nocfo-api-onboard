@@ -63,6 +63,26 @@ first7accounts |> List.iteri (fun i a ->
         printfn "#%d id=%d number=%s" (i+1) full.id full.number
 )
 
+printfn "\nStreaming first 7 documents for first business...\n"
+
+let first7documents =
+    Nocfo.Domain.Streams.streamDocuments businessContext
+    |> AsyncSeq.take 7
+    |> AsyncSeq.toListSynchronously
+
+printfn "Fetched %d documents" first7documents.Length
+first7documents |> List.iteri (fun i d ->
+    let document =
+        match d with
+        | Ok document -> document
+        | Error e -> failwithf "Error fetching document: %A" e
+    match document with
+    | Nocfo.Domain.Document.Partial (p, _) ->
+        printfn "#%d id=%d number=%s" (i+1) p.id p.number
+    | Nocfo.Domain.Document.Full full ->
+        printfn "#%d id=%d number=%s" (i+1) full.id full.number
+)
+
 printfn "\n--- Testing streamPatches: mutate first account number to 9999 and back ---\n"
 
 // Extract first business slug (for URL) and first account id/number (for patching)
