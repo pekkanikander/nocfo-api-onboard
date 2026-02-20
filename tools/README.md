@@ -23,6 +23,7 @@ dotnet run --project tools -- update accounts \
 ```
 
 Requirements:
+
 - .NET 9 SDK
 - `NOCFO_TOKEN` (required) and optional `NOCFO_BASE_URL`
 - Build artifacts from `hawaii-client` (`dotnet build hawaii-client`)
@@ -37,6 +38,7 @@ Requirements:
 | `delete accounts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
 
 Unimplemented (exit code `1` with a TODO):
+
 - `update businesses`
 - `create accounts` / `create businesses` (alignment currently assumes “desired state” rather than inserts)
 

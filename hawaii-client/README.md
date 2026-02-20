@@ -36,7 +36,7 @@ surface or CSV helpers, remember that the CLI depends on those modules directly.
 
 ## Prerequisites
 
-- .NET 9 SDK (`dotnet --version` ≥ 9.0).
+- .NET 10 SDK (`dotnet --version` ≥ 10.0).
 - Access to the NoCFO API and a valid personal access token.
 - `NOCFO_TOKEN` exported in your shell.
 - The base URL defaults to `https://api-tst.nocfo.io`, the test environment.
