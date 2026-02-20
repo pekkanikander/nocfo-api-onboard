@@ -88,10 +88,10 @@ type AccountResult =
 /// Documents
 /// ------------------------------------------------------------
 
-/// Documents currently use the same DTO shape for both listing and full payloads.
-/// We still wrap them in Hydratable to keep the same domain pattern as accounts.
-type DocumentFull = NocfoApi.Types.Document
-type DocumentRow  = NocfoApi.Types.Document
+/// Documents now have separate list/detail DTOs in generated types.
+/// For current flows we keep list payloads as both row and full values.
+type DocumentFull = NocfoApi.Types.DocumentList
+type DocumentRow  = NocfoApi.Types.DocumentList
 type Document     = Hydratable<DocumentFull, DocumentRow>
 
 /// ------------------------------------------------------------
@@ -383,7 +383,7 @@ module Streams =
 
   /// Domain-level stream of documents for a given business.
   let streamDocuments (context: BusinessContext) : AsyncSeq<Result<Document, DomainError>> =
-    Streams.streamPaginated<PaginatedDocumentList, DocumentFull>
+    Streams.streamPaginated<PaginatedDocumentListList, DocumentFull>
        context.ctx.http
        (fun page -> Endpoints.documentsBySlugPage context.key.slug page)
     |> toDomain Document.ofRaw
@@ -454,8 +454,8 @@ module BusinessResolver =
   let private formIdentifierCandidates (input: string) : BusinessIdentifier list =
     let trimmed = input.Trim()
 
-    [ BusinessIdentifier.Create(BusinessIdentifierTypeEnum.Y_tunnus, trimmed)
-      BusinessIdentifier.Create(BusinessIdentifierTypeEnum.Vat_code, trimmed) ]
+    [ BusinessIdentifier.Create(0, BusinessIdentifierTypeEnum.Y_tunnus, trimmed)
+      BusinessIdentifier.Create(0, BusinessIdentifierTypeEnum.Vat_code, trimmed) ]
 
   let private identifiersOverlap (candidates: BusinessIdentifier list) (identifier: BusinessIdentifier) =
     candidates

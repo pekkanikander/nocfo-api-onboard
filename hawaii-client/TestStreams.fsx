@@ -78,9 +78,9 @@ first7documents |> List.iteri (fun i d ->
         | Error e -> failwithf "Error fetching document: %A" e
     match document with
     | Nocfo.Domain.Document.Partial (p, _) ->
-        printfn "#%d id=%d number=%s" (i+1) p.id p.number
+        printfn "#%d id=%d number=%s" (i+1) p.id (defaultArg p.number "<none>")
     | Nocfo.Domain.Document.Full full ->
-        printfn "#%d id=%d number=%s" (i+1) full.id full.number
+        printfn "#%d id=%d number=%s" (i+1) full.id (defaultArg full.number "<none>")
 )
 
 printfn "\n--- Testing streamPatches: mutate first account number to 9999 and back ---\n"

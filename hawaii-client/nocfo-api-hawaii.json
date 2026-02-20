@@ -14,20 +14,38 @@
               "id"
             ]
         },
-        "Document": {
+        "Business": {
           "required": [
-            "audit_trail_has_unseen_actions",
-            "balance",
-            "blueprint_type",
-            "contact_name",
+            "apix_transfer_id",
+            "apix_transfer_key",
+            "apix_unique_id",
+            "can_invoice",
+            "country",
+            "country_config",
             "created_at",
-            "entry_ui_rows",
-            "has_ai_generated_description",
+            "demo_days_left",
+            "einvoicing_address",
+            "einvoicing_operator",
+            "has_business_address",
+            "has_tags",
             "id",
-            "import_data",
-            "is_locked",
-            "number",
-            "period",
+            "identifiers",
+            "invoicing_tax_code",
+            "is_billable",
+            "is_eligible_for_einvoicing",
+            "is_new_invoicer",
+            "logo",
+            "name",
+            "owner_email",
+            "owner_name",
+            "period_id",
+            "salaxy_account_id",
+            "salaxy_enabled",
+            "stripe_customer_id",
+            "stripe_plan_status",
+            "stripe_subscription_id",
+            "subscription_plan",
+            "subscription_source",
             "updated_at"
           ]
         },
@@ -75,7 +93,7 @@
             }
           }
         },
-        "PaginatedDocumentList": {
+        "PaginatedDocumentListList": {
           "properties": {
             "prev": {
               "type": "string",

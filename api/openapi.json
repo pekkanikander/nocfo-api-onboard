@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "NoCFO API Documentation",
-        "version": "",
+        "version": "v1",
         "x-logo": {
             "url": "https://cdn.nocfo.io/logos/nocfo-black.svg",
             "backgroundColor": "#f2f4f7",
@@ -12,6 +12,53 @@
         "description": "Get help and discuss in our [Slack community](https://nocfocommunity.slack.com) 👉 [**Click here to join**](https://join.slack.com/t/nocfocommunity/shared_invite/zt-3b7i1rcfp-4JmhWVTqGxzireppzCwA)\n\n### Welcome!\n\nWelcome to the NoCFO API Documentation! The **NoCFO API** provides secure, programmatic access to the core functionalities of the NoCFO platform, enabling seamless integration with your own applications and workflows.\nWith these endpoints, you can interact with a variety of features including **bookkeeping**, **invoicing**, and other financial operations.\n\nOur API is built to be reliable, scalable, and developer-friendly, with consistent request/response structures and clear authentication methods. Whether you are building new integrations, automating repetitive tasks, or syncing data between systems, the NoCFO API offers the tools you need.\n\n### Available Resources\n\nWe provide both **testing** and **production** environments so you can safely develop and validate your integration before going live.\n\n- **Testing environment**: [https://api-tst.nocfo.io/docs](https://api-tst.nocfo.io/docs)\nUse this environment for development and testing purposes. Data here is isolated and does not affect production systems.\n\n- **Production environment**: [https://api-prd.nocfo.io/docs](https://api-prd.nocfo.io/docs)\nUse this environment for live, real-world operations once your integration is fully tested.\n\n### Authentication\n\nThe NoCFO API uses **token-based authentication** to ensure secure access.\nTo authenticate requests, you must include a valid **Personal Access Token (PAT)** in the `Authorization` header:\n\n```http\nAuthorization: Token <your_token_here>\n```\n\n#### Key points to note:\n\n- Tokens are user-specific. Any action performed with a token will be attributed to the user who created it.\n- Keep your token secure — treat it like a password. Do not share it or expose it in public repositories.\n- If a token is compromised, it should be revoked immediately from your account settings.\n\n#### Obtaining Access Tokens\n\nYou can generate and manage your access tokens directly in the NoCFO web application under Account Settings.\n- Testing environment: https://login-tst.nocfo.io/auth/tokens/\n- Production environment: https://login.nocfo.io/auth/tokens/\n\n### Developer Support and Community\n\nJoin our [NoCFO Slack Community](https://nocfocommunity.slack.com) to connect with other developers, share best practices, and get direct support from our team.\nIn the Slack workspace, you can:\n- Ask questions about API usage and integrations\n- Get quick feedback and troubleshooting help\n- Share your use cases and solutions with others\n\n[**Click here to join**](https://join.slack.com/t/nocfocommunity/shared_invite/zt-3b7i1rcfp-4JmhWVTqGxzireppzCwA)"
     },
     "paths": {
+        "/auth/jwt/": {
+            "post": {
+                "operationId": "auth_jwt_create",
+                "description": "Returns a short-lived JWT (1 hour) for the authenticated user. If a `business_slug` is provided, the token is scoped to that business.\n\nUse the returned token in the `Authorization` header:\n\n`Authorization: Token <jwt>`\n\nBusiness scoping: when provided, the `business_slug` is embedded in the JWT. The token is only valid for the business whose slug was requested, and requests must match that slug in the business context.",
+                "summary": "Get JWT token",
+                "tags": [
+                    "JWT"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GetJwtTokenRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GetJwtTokenRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GetJwtTokenRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetJwtTokenResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
         "/v1/business/": {
             "get": {
                 "operationId": "Businesses - List",
@@ -34,6 +81,15 @@
                         "description": "Number of results to return per page.",
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "A search term.",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -632,11 +688,27 @@
                     },
                     {
                         "in": "query",
+                        "name": "exclude_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Exclude contact by ID."
+                    },
+                    {
+                        "in": "query",
                         "name": "is_invoicing_enabled",
                         "schema": {
                             "type": "boolean"
                         },
                         "description": "Filter contacts by whether they have invoicing enabled."
+                    },
+                    {
+                        "in": "query",
+                        "name": "name_iexact",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter contacts by exact name match (case insensitive)."
                     },
                     {
                         "name": "page",
@@ -940,6 +1012,14 @@
                         "description": "Filter documents by account ID."
                     },
                     {
+                        "in": "query",
+                        "name": "account_type",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter documents that include at least one entry matching the provided account type. The parameter can be repeated, e.g. account_type=ASS_DUE&account_type=LIA_DUE."
+                    },
+                    {
                         "in": "path",
                         "name": "business_slug",
                         "schema": {
@@ -1074,7 +1154,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedDocumentList"
+                                    "$ref": "#/components/schemas/PaginatedDocumentListList"
                                 }
                             }
                         },
@@ -1104,17 +1184,17 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         },
                         "application/x-www-form-urlencoded": {
                             "schema": {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         },
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         }
                     }
@@ -1124,7 +1204,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Document"
+                                    "$ref": "#/components/schemas/DocumentList"
                                 }
                             }
                         },
@@ -1165,7 +1245,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Document"
+                                    "$ref": "#/components/schemas/DocumentInstance"
                                 }
                             }
                         },
@@ -1203,17 +1283,17 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentInstance"
                             }
                         },
                         "application/x-www-form-urlencoded": {
                             "schema": {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentInstance"
                             }
                         },
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentInstance"
                             }
                         }
                     }
@@ -1223,7 +1303,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Document"
+                                    "$ref": "#/components/schemas/DocumentInstance"
                                 }
                             }
                         },
@@ -1261,17 +1341,17 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/PatchedDocument"
+                                "$ref": "#/components/schemas/PatchedDocumentInstance"
                             }
                         },
                         "application/x-www-form-urlencoded": {
                             "schema": {
-                                "$ref": "#/components/schemas/PatchedDocument"
+                                "$ref": "#/components/schemas/PatchedDocumentInstance"
                             }
                         },
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/PatchedDocument"
+                                "$ref": "#/components/schemas/PatchedDocumentInstance"
                             }
                         }
                     }
@@ -1281,7 +1361,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Document"
+                                    "$ref": "#/components/schemas/DocumentInstance"
                                 }
                             }
                         },
@@ -1381,9 +1461,337 @@
                 }
             }
         },
+        "/v1/business/{business_slug}/document/{document_id}/relation/": {
+            "get": {
+                "operationId": "Relations - List",
+                "summary": "Relations - List",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "document_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Documents"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedDocumentRelationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "Relations - Create",
+                "summary": "Relations - Create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "document_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Documents"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentRelation"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentRelation"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentRelation"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentRelation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/v1/business/{business_slug}/document/{document_id}/relation/{relation_id}/": {
+            "get": {
+                "operationId": "Relation - Retrieve",
+                "summary": "Relation - Retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "document_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "relation_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Documents"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentRelation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "Relation - Update",
+                "summary": "Relation - Update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "document_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "relation_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Documents"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentRelation"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentRelation"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentRelation"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentRelation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "Relation - Partial Update",
+                "summary": "Relation - Partial Update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "document_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "relation_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Documents"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedDocumentRelation"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedDocumentRelation"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedDocumentRelation"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentRelation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "Relation - Delete",
+                "summary": "Relation - Delete",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "document_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "relation_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Documents"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/v1/business/{business_slug}/file_upload/": {
             "post": {
-                "operationId": "business_file_upload_create",
+                "operationId": "v1_business_file_upload_create",
                 "description": "This endpoint allows you to upload a file to the system. You can specify the file name, type, and optionally the folder where the file should be stored.",
                 "summary": "Files - Upload",
                 "parameters": [
@@ -1707,6 +2115,450 @@
                 }
             }
         },
+        "/v1/business/{business_slug}/header/": {
+            "get": {
+                "operationId": "Headers - List",
+                "description": "This endpoints allows you to retrieve a list of all the company's accounts and create new ones. It includes extensive filtering options and a search feature",
+                "summary": "Headers - List",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "A search term.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Accounts",
+                    "MCP"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedHeaderListList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "Headers - Create",
+                "description": "This endpoints allows you to retrieve a list of all the company's accounts and create new ones. It includes extensive filtering options and a search feature",
+                "summary": "Headers - Create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Accounts",
+                    "MCP"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HeaderList"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HeaderList"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HeaderList"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HeaderList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/v1/business/{business_slug}/header/{header_id}/": {
+            "get": {
+                "operationId": "Header - Retrieve",
+                "description": "This endpoint covers editing and viewing the details of a single account. You can retrieve the account's detailed information, update it, or delete it from here.",
+                "summary": "Header - Retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "header_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Accounts",
+                    "MCP"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HeaderList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/v1/business/{business_slug}/identifiers/": {
+            "get": {
+                "operationId": "Business identifiers - List",
+                "description": "This endpoint allows you to retrieve and create business identifiers for the selected business.",
+                "summary": "Business identifiers - List",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Businesses",
+                    "MCP"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedBusinessIdentifierList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "Business identifiers - Create",
+                "description": "This endpoint allows you to retrieve and create business identifiers for the selected business.",
+                "summary": "Business identifiers - Create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Businesses",
+                    "MCP"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BusinessIdentifier"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BusinessIdentifier"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BusinessIdentifier"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BusinessIdentifier"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/v1/business/{business_slug}/identifiers/{identifier_id}/": {
+            "get": {
+                "operationId": "Business identifier - Retrieve",
+                "description": "This endpoint allows you to retrieve, update, and delete a single business identifier.",
+                "summary": "Business identifier - Retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "identifier_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Businesses",
+                    "MCP"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BusinessIdentifier"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "Business identifier - Update",
+                "description": "This endpoint allows you to retrieve, update, and delete a single business identifier.",
+                "summary": "Business identifier - Update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "identifier_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Businesses",
+                    "MCP"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BusinessIdentifier"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BusinessIdentifier"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BusinessIdentifier"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BusinessIdentifier"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "Business identifier - Partial Update",
+                "description": "This endpoint allows you to retrieve, update, and delete a single business identifier.",
+                "summary": "Business identifier - Partial Update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "identifier_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Businesses",
+                    "MCP"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedBusinessIdentifier"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedBusinessIdentifier"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedBusinessIdentifier"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BusinessIdentifier"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "Business identifier - Delete",
+                "description": "This endpoint allows you to retrieve, update, and delete a single business identifier.",
+                "summary": "Business identifier - Delete",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "identifier_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Businesses",
+                    "MCP"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/v1/business/{business_slug}/tags/": {
             "get": {
                 "operationId": "Tags - List",
@@ -2012,6 +2864,68 @@
                         "required": true
                     },
                     {
+                        "in": "query",
+                        "name": "created_at_gte",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Filter invoices by creation date from this date onwards (inclusive)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "created_at_lte",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Filter invoices by creation date up to this date (inclusive)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "due_date_gte",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Filter invoices from this due date onwards (inclusive)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "due_date_lte",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Filter invoices up to this due date (inclusive)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "invoicing_date_gte",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Filter invoices from this invoicing date onwards (inclusive)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "invoicing_date_lte",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Filter invoices up to this invoicing date (inclusive)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "is_credit_note",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Filter invoices based on whether they are credit notes."
+                    },
+                    {
                         "name": "page",
                         "required": false,
                         "in": "query",
@@ -2300,7 +3214,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/accept/": {
             "post": {
-                "operationId": "invoicing_invoice_actions_accept_create",
+                "operationId": "v1_invoicing_invoice_actions_accept_create",
                 "description": "Accepts the invoice, marking it as accepted and ready to be delivered.",
                 "summary": "Sales Invoice - Accept",
                 "parameters": [
@@ -2334,7 +3248,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/credit_loss/": {
             "post": {
-                "operationId": "invoicing_invoice_actions_credit_loss_create",
+                "operationId": "v1_invoicing_invoice_actions_credit_loss_create",
                 "description": "Marks the invoice as a credit loss, updating its status accordingly.",
                 "summary": "Sales Invoice - Set as Credit Loss",
                 "parameters": [
@@ -2368,7 +3282,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/disable_recurrence/": {
             "post": {
-                "operationId": "invoicing_invoice_actions_disable_recurrence_create",
+                "operationId": "v1_invoicing_invoice_actions_disable_recurrence_create",
                 "description": "Disables the recurrence of the invoice, preventing it from being automatically generated in the future.",
                 "summary": "Sales Invoice - Disable Recurrence",
                 "parameters": [
@@ -2402,7 +3316,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/paid/": {
             "post": {
-                "operationId": "invoicing_invoice_actions_paid_create",
+                "operationId": "v1_invoicing_invoice_actions_paid_create",
                 "description": "Marks the invoice as paid, updating its status and payment date.",
                 "summary": "Sales Invoice - Set as Paid",
                 "parameters": [
@@ -2436,7 +3350,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/actions/unpaid/": {
             "post": {
-                "operationId": "invoicing_invoice_actions_unpaid_create",
+                "operationId": "v1_invoicing_invoice_actions_unpaid_create",
                 "description": "Marks the invoice as unpaid, updating its status to accepted.",
                 "summary": "Sales Invoice - Set as Unpaid",
                 "parameters": [
@@ -2470,7 +3384,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/delivery_methods/": {
             "get": {
-                "operationId": "invoicing_invoice_delivery_methods_retrieve",
+                "operationId": "v1_invoicing_invoice_delivery_methods_retrieve",
                 "description": "Retrieves the available delivery methods for sending the invoice. This includes email and other configured methods.",
                 "summary": "Sales Invoice - Get Delivery Methods",
                 "parameters": [
@@ -2504,7 +3418,7 @@
         },
         "/v1/invoicing/{business_slug}/invoice/{invoice_id}/send/": {
             "post": {
-                "operationId": "invoicing_invoice_send_create",
+                "operationId": "v1_invoicing_invoice_send_create",
                 "description": "Sends the invoice to the receiver via the specified delivery method. The delivery method can be email or other configured methods.",
                 "summary": "Sales Invoice - Send",
                 "parameters": [
@@ -2531,6 +3445,109 @@
                 ],
                 "responses": {
                     "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/v1/invoicing/{business_slug}/invoice/{invoice_id}/status_messages/": {
+            "post": {
+                "operationId": "v1_invoicing_invoice_status_messages_create",
+                "description": "Add a custom status message to the invoice that is displayed in the user interface. This can be used, for example, when an external system processes invoices and wants to communicate the processing status to NoCFO.",
+                "summary": "Sales Invoice - Create external status message",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "invoice_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Invoices",
+                    "MCP"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InvoiceExternalStatusMessage"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InvoiceExternalStatusMessage"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InvoiceExternalStatusMessage"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvoiceExternalStatusMessage"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/v1/invoicing/{business_slug}/invoice/{invoice_id}/status_messages/{message_id}/": {
+            "delete": {
+                "operationId": "v1_invoicing_invoice_status_messages_destroy",
+                "description": "Deletes an external status message from the invoice by its ID.",
+                "summary": "Sales Invoice - Delete External Status Message",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "business_slug",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "invoice_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "message_id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Invoices",
+                    "MCP"
+                ],
+                "responses": {
+                    "204": {
                         "description": "No response body"
                     }
                 }
@@ -3737,12 +4754,20 @@
                         "type": "integer",
                         "readOnly": true
                     },
+                    "is_billable": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "vat_period_id": {
                         "type": "integer",
-                        "readOnly": true
+                        "readOnly": true,
+                        "nullable": true
                     },
                     "vat_posting_method": {
                         "$ref": "#/components/schemas/VatPostingMethodEnum"
+                    },
+                    "vat_reporting_method": {
+                        "$ref": "#/components/schemas/VatReportingMethodEnum"
                     },
                     "form": {
                         "$ref": "#/components/schemas/FormEnum"
@@ -3764,6 +4789,14 @@
                         "type": "integer",
                         "maximum": 999,
                         "minimum": 0
+                    },
+                    "invoicing_default_email_subject": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "invoicing_default_email_content": {
+                        "type": "string",
+                        "nullable": true
                     },
                     "has_accrual_based_entries_for_invoicing": {
                         "type": "boolean"
@@ -3829,7 +4862,7 @@
                     "invoicing_country": {
                         "type": "string",
                         "nullable": true,
-                        "maxLength": 32
+                        "maxLength": 2
                     },
                     "has_business_address": {
                         "type": "string",
@@ -3853,41 +4886,45 @@
                     "business_country": {
                         "type": "string",
                         "nullable": true,
-                        "maxLength": 32
+                        "maxLength": 2
                     },
-                    "account_yle_tax_id": {
+                    "account_yle_tax": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_tax_deferrals_id": {
+                    "account_tax_deferrals": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_income_tax_rec_id": {
+                    "account_income_tax_rec": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_income_tax_lia_id": {
+                    "account_income_tax_lia": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_previous_profit_id": {
+                    "account_previous_profit": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_vat_receivables_id": {
+                    "account_vat_receivables": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_vat_liabilities_id": {
+                    "account_vat_liabilities": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_trade_receivables_id": {
+                    "account_vat_accrual_adjustment": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_payables_id": {
+                    "account_trade_receivables": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "account_payables": {
                         "type": "integer",
                         "nullable": true
                     },
@@ -3927,9 +4964,6 @@
                         "type": "boolean"
                     },
                     "onboarding_created_invoicing_product": {
-                        "type": "boolean"
-                    },
-                    "onboarding_einvoice_enabled": {
                         "type": "boolean"
                     },
                     "onboarding_registered_to_kravia": {
@@ -3977,18 +5011,6 @@
                         "type": "string",
                         "readOnly": true,
                         "nullable": true
-                    },
-                    "trial_progress_percentage": {
-                        "type": "integer",
-                        "readOnly": true
-                    },
-                    "trial_days_left": {
-                        "type": "integer",
-                        "readOnly": true
-                    },
-                    "is_trialing": {
-                        "type": "boolean",
-                        "readOnly": true
                     },
                     "demo_days_left": {
                         "type": "integer",
@@ -4043,9 +5065,9 @@
                     "id",
                     "identifiers",
                     "invoicing_tax_code",
+                    "is_billable",
                     "is_eligible_for_einvoicing",
                     "is_new_invoicer",
-                    "is_trialing",
                     "logo",
                     "name",
                     "owner_email",
@@ -4058,14 +5080,17 @@
                     "stripe_subscription_id",
                     "subscription_plan",
                     "subscription_source",
-                    "trial_days_left",
-                    "trial_progress_percentage",
                     "updated_at",
+                    "vat_period_id"
                 ]
             },
             "BusinessIdentifier": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
                     "type": {
                         "$ref": "#/components/schemas/BusinessIdentifierTypeEnum"
                     },
@@ -4075,6 +5100,7 @@
                     }
                 },
                 "required": [
+                    "id",
                     "type",
                     "value"
                 ]
@@ -4222,7 +5248,7 @@
                     "invoicing_country": {
                         "type": "string",
                         "nullable": true,
-                        "maxLength": 32
+                        "maxLength": 2
                     },
                     "invoicing_language": {
                         "$ref": "#/components/schemas/InvoicingLanguageEnum"
@@ -4320,6 +5346,12 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "saltedge_tos_accepted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "nullable": true
+                    },
                     "last_csat": {
                         "type": "string",
                         "format": "date-time",
@@ -4392,6 +5424,7 @@
                     "last_csat",
                     "last_login",
                     "notifications",
+                    "saltedge_tos_accepted_at",
                     "subscription_tier",
                     "tos_accepted",
                     "userships"
@@ -4408,6 +5441,7 @@
                     7,
                     8,
                     9,
+                    15,
                     14,
                     10,
                     11,
@@ -4415,7 +5449,7 @@
                     13
                 ],
                 "type": "integer",
-                "description": "* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle"
+                "description": "* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `15` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle"
             },
             "DefaultVatPeriodEnum": {
                 "enum": [
@@ -4440,12 +5474,86 @@
             "DeliveryMethodEnum": {
                 "enum": [
                     "EMAIL",
-                    "EINVOICE"
+                    "EINVOICE",
+                    "ELASKU",
+                    "PAPER"
                 ],
                 "type": "string",
-                "description": "* `EMAIL` - Email\n* `EINVOICE` - Einvoice"
+                "description": "* `EMAIL` - Email\n* `EINVOICE` - Einvoice\n* `ELASKU` - Elasku\n* `PAPER` - Paper"
             },
-            "Document": {
+            "DocumentImport": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true,
+                        "nullable": true,
+                        "description": "Unique identifier attached to logs. For debugging purposes."
+                    },
+                    "algo_status": {
+                        "$ref": "#/components/schemas/AlgoStatusEnum"
+                    },
+                    "data_source": {
+                        "type": "string",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "identifier": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 256
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 2048
+                    },
+                    "contact_hint": {
+                        "type": "string",
+                        "nullable": true,
+                        "title": "Contact",
+                        "maxLength": 256
+                    },
+                    "balance_after_transaction": {
+                        "type": "number",
+                        "format": "float",
+                        "readOnly": true
+                    },
+                    "reference_number": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 64
+                    },
+                    "payment_account_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "amount",
+                    "balance_after_transaction",
+                    "data_source",
+                    "date",
+                    "id",
+                    "payment_account_id",
+                    "trace_id"
+                ]
+            },
+            "DocumentInstance": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -4517,14 +5625,14 @@
                     "attachment_ids": {
                         "type": "array",
                         "items": {
-                            "type": "integer"
+                            "type": "string"
                         },
-                        "description": "List of attachment IDs associated with this document."
+                        "description": "IDs of attachments associated with this document."
                     },
                     "type": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/DocumentTypeEnum"
+                                "$ref": "#/components/schemas/Type110Enum"
                             }
                         ],
                         "description": "The type of the document.\n\n* `0` - Normaali kirjaus\n* `3` - Arvonlisäverokirjaus\n* `4` - Poisto\n* `6` - YLE-vero\n* `7` - Tulovero",
@@ -4595,6 +5703,22 @@
                             "type": "integer"
                         },
                         "description": "List of tag IDs associated with this document."
+                    },
+                    "relations": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Combined list of incoming and outgoing document relations."
+                    },
+                    "has_accrual_pair_due_mismatch": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "shortcuts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Shortcut"
+                        },
+                        "readOnly": true
                     }
                 },
                 "required": [
@@ -4607,102 +5731,259 @@
                     "contact_name",
                     "created_at",
                     "entry_ui_rows",
+                    "has_accrual_pair_due_mismatch",
                     "has_ai_generated_description",
                     "id",
                     "import_data",
                     "is_locked",
                     "number",
                     "period",
+                    "relations",
+                    "shortcuts",
                     "updated_at"
                 ]
             },
-            "DocumentImport": {
+            "DocumentList": {
                 "type": "object",
                 "properties": {
                     "id": {
                         "type": "integer",
                         "readOnly": true
                     },
-                    "trace_id": {
+                    "created_at": {
                         "type": "string",
-                        "format": "uuid",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "The date and time when the record was created."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "The date and time when the record was last updated."
+                    },
+                    "number": {
+                        "type": "string",
                         "readOnly": true,
                         "nullable": true,
-                        "description": "Unique identifier attached to logs. For debugging purposes."
+                        "description": "The document number is an automatically generated number that identifies the document in the accounting system."
                     },
-                    "algo_status": {
-                        "$ref": "#/components/schemas/AlgoStatusEnum"
+                    "is_flagged": {
+                        "type": "boolean",
+                        "description": "Indicates whether the document is flagged for review or attention."
                     },
-                    "algo_trial_restricted": {
-                        "type": "string",
-                        "readOnly": true
-                    },
-                    "data_source": {
-                        "type": "string",
+                    "is_locked": {
+                        "type": "boolean",
                         "readOnly": true,
-                        "nullable": true
+                        "description": "Indicates whether the document is locked and cannot be modified."
                     },
-                    "identifier": {
-                        "type": "string",
-                        "nullable": true,
-                        "maxLength": 256
+                    "is_draft": {
+                        "type": "boolean",
+                        "description": "Indicates whether the document is a draft. Draft documents are not yet finalized."
                     },
                     "date": {
                         "type": "string",
-                        "format": "date"
-                    },
-                    "amount": {
-                        "type": "number",
-                        "format": "float"
+                        "format": "date",
+                        "description": "The date of the document. This is the date when the document was created or issued."
                     },
                     "description": {
                         "type": "string",
-                        "nullable": true,
-                        "maxLength": 2048
-                    },
-                    "contact_hint": {
-                        "type": "string",
-                        "nullable": true,
-                        "title": "Contact",
+                        "description": "A brief description of the document.",
                         "maxLength": 256
                     },
-                    "balance_after_transaction": {
-                        "type": "number",
-                        "format": "float",
-                        "readOnly": true
-                    },
-                    "reference_number": {
-                        "type": "string",
-                        "nullable": true,
-                        "maxLength": 64
-                    },
-                    "payment_account_id": {
+                    "contact_id": {
                         "type": "integer",
                         "nullable": true,
+                        "description": "Contact ID associated with this document."
+                    },
+                    "contact_name": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Contact name associated with this document."
+                    },
+                    "period": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Accounting period ID to which this document belongs."
+                    },
+                    "balance": {
+                        "type": "number",
+                        "format": "float",
+                        "readOnly": true,
+                        "description": "Total balance of the document. This value represents the net effect on accounts of type \"bank account.\" Note that this value is typically zero if no money has yet moved, for example, when recording accounts receivable. Once money is received or paid via a bank account, the amount will be shown in this field."
+                    },
+                    "attachment_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of attachments associated with this document."
+                    },
+                    "type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Type110Enum"
+                            }
+                        ],
+                        "description": "The type of the document.\n\n* `0` - Normaali kirjaus\n* `3` - Arvonlisäverokirjaus\n* `4` - Poisto\n* `6` - YLE-vero\n* `7` - Tulovero",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                    },
+                    "blueprint": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Blueprint"
+                            }
+                        ],
+                        "description": "Blueprint is an internal term for this object, based on which the actual entries are generated."
+                    },
+                    "blueprint_type": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "The blueprint type is determined programmatically, and therefore this field is read-only."
+                    },
+                    "import_data": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentImport"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Import data e.g. CSV or bank transaction data associated with this document."
+                    },
+                    "has_ai_generated_description": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "Deprecated: Indicates whether the description of this document was generated by AI."
+                    },
+                    "entry_ui_rows": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/EntryUIRows"
+                        },
+                        "readOnly": true,
+                        "description": "UI rows for entries in this document, used for rendering the entry UI."
+                    },
+                    "audit_trail_last_seen_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Last time the user has visited this document's activity feed."
+                    },
+                    "audit_trail_has_unseen_actions": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "Indicates whether there are unseen actions in the activity feed for this document."
+                    },
+                    "audit_trail_last_mention_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Last time the user was mentioned in the activity feed of this document."
+                    },
+                    "audit_trail_last_comment_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Last time the user has commented in the activity feed of this document."
+                    },
+                    "tag_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "description": "List of tag IDs associated with this document."
+                    },
+                    "relations": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Combined list of incoming and outgoing document relations."
+                    },
+                    "has_accrual_pair_due_mismatch": {
+                        "type": "boolean",
                         "readOnly": true
                     }
                 },
                 "required": [
-                    "algo_trial_restricted",
-                    "amount",
-                    "balance_after_transaction",
-                    "data_source",
-                    "date",
+                    "audit_trail_has_unseen_actions",
+                    "audit_trail_last_comment_at",
+                    "audit_trail_last_mention_at",
+                    "audit_trail_last_seen_at",
+                    "balance",
+                    "blueprint_type",
+                    "contact_name",
+                    "created_at",
+                    "entry_ui_rows",
+                    "has_accrual_pair_due_mismatch",
+                    "has_ai_generated_description",
                     "id",
-                    "payment_account_id",
-                    "trace_id"
+                    "import_data",
+                    "is_locked",
+                    "number",
+                    "period",
+                    "relations",
+                    "updated_at"
                 ]
             },
-            "DocumentTypeEnum": {
+            "DocumentRelation": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "The date and time when the record was created."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "The date and time when the record was last updated."
+                    },
+                    "related_document": {
+                        "type": "integer",
+                        "description": "The related document of this relation."
+                    },
+                    "description": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Description of the related (target) document."
+                    },
+                    "role": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoleEnum"
+                            }
+                        ],
+                        "description": "Semantic role of the current document within this relation.\n\n* `ACCRUAL` - ACCRUAL\n* `SETTLEMENT` - SETTLEMENT"
+                    },
+                    "type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentRelationTypeEnum"
+                            }
+                        ],
+                        "description": "Type of relation that links the documents.\n\n* `ACCRUAL_PAIR` - ACCRUAL_PAIR"
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "description",
+                    "id",
+                    "type",
+                    "updated_at"
+                ]
+            },
+            "DocumentRelationTypeEnum": {
                 "enum": [
-                    0,
-                    3,
-                    4,
-                    6,
-                    7
+                    "ACCRUAL_PAIR"
                 ],
-                "type": "integer",
-                "description": "* `0` - Normaali kirjaus\n* `3` - Arvonlisäverokirjaus\n* `4` - Poisto\n* `6` - YLE-vero\n* `7` - Tulovero"
+                "type": "string",
+                "description": "* `ACCRUAL_PAIR` - ACCRUAL_PAIR"
             },
             "Entry": {
                 "type": "object",
@@ -4752,10 +6033,10 @@
                     "vat_code": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/VatCode5f1Enum"
+                                "$ref": "#/components/schemas/VatCode585Enum"
                             }
                         ],
-                        "description": "The VAT code of this entry.\n\n* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle",
+                        "description": "The VAT code of this entry.\n\n* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `15` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle",
                         "minimum": -2147483648,
                         "maximum": 2147483647
                     },
@@ -4832,14 +6113,87 @@
                 "type": "string",
                 "description": "* `FI_OY` - Osakeyhtiö (Oy)\n* `FI_OYJ` - Julkinen osakeyhtiö (Oyj)\n* `FI_TMI` - Toiminimi (Tmi)\n* `FI_KY` - Kommandiittiyhtiö (Ky)\n* `FI_OK` - Osuuskunta (Osk)\n* `FI_AY` - Avoin yhtiö (AY)\n* `FI_AS_OY` - Asunto-osakeyhtiö (As Oy)\n* `FI_KOY` - Kiinteistöosakeyhtiö (Koy)\n* `FI_NY` - NYT-yritys\n* `FI_YHD` - Yhdistys (ry)\n* `DE_UG` - Saksalainen yrittäjäosakeyhtiö (UG)\n* `DEMO` - Demo-yritys"
             },
+            "GetJwtTokenRequest": {
+                "type": "object",
+                "properties": {
+                    "business_slug": {
+                        "type": "string"
+                    }
+                }
+            },
+            "GetJwtTokenResponse": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "token"
+                ]
+            },
+            "HeaderList": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "readOnly": true
+                    },
+                    "name_translations": {},
+                    "type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/HeaderListTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "parent_id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "parent_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "readOnly": true
+                    },
+                    "level": {
+                        "type": "integer",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "id",
+                    "level",
+                    "name",
+                    "name_translations",
+                    "parent_id",
+                    "parent_ids",
+                    "type"
+                ]
+            },
+            "HeaderListTypeEnum": {
+                "enum": [
+                    "B",
+                    "I"
+                ],
+                "type": "string",
+                "description": "* `B` - BALANCE_SHEET\n* `I` - INCOME_STATEMENT"
+            },
             "ImportSourceEnum": {
                 "enum": [
                     "APIX",
                     "EMAIL",
+                    "UPLOAD",
                     "VAT_PURCHASE_INVOICE"
                 ],
                 "type": "string",
-                "description": "* `APIX` - Apix\n* `EMAIL` - Email\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
+                "description": "* `APIX` - Apix\n* `EMAIL` - Email\n* `UPLOAD` - Lataus\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
             },
             "Invitation": {
                 "type": "object",
@@ -5160,7 +6514,7 @@
                     "document": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         ],
                         "readOnly": true
@@ -5175,6 +6529,13 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "external_status_messages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InvoiceExternalStatusMessage"
+                        },
+                        "readOnly": true
                     }
                 },
                 "required": [
@@ -5186,6 +6547,7 @@
                     "document",
                     "due_date",
                     "earliest_debt_collection_date",
+                    "external_status_messages",
                     "friendly_name",
                     "id",
                     "invoice_number",
@@ -5208,6 +6570,22 @@
                     "total_vat_amount",
                     "updated_at",
                     "vat_country"
+                ]
+            },
+            "InvoiceExternalStatusMessage": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "message"
                 ]
             },
             "InvoiceRow": {
@@ -5440,6 +6818,37 @@
                     }
                 }
             },
+            "PaginatedBusinessIdentifierList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BusinessIdentifier"
+                        }
+                    }
+                }
+            },
             "PaginatedBusinessList": {
                 "type": "object",
                 "required": [
@@ -5502,7 +6911,7 @@
                     }
                 }
             },
-            "PaginatedDocumentList": {
+            "PaginatedDocumentListList": {
                 "type": "object",
                 "required": [
                     "count",
@@ -5528,7 +6937,38 @@
                     "results": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Document"
+                            "$ref": "#/components/schemas/DocumentList"
+                        }
+                    }
+                }
+            },
+            "PaginatedDocumentRelationList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DocumentRelation"
                         }
                     }
                 }
@@ -5560,6 +7000,37 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/Entry"
+                        }
+                    }
+                }
+            },
+            "PaginatedHeaderListList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HeaderList"
                         }
                     }
                 }
@@ -5865,12 +7336,20 @@
                         "type": "integer",
                         "readOnly": true
                     },
+                    "is_billable": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "vat_period_id": {
                         "type": "integer",
-                        "readOnly": true
+                        "readOnly": true,
+                        "nullable": true
                     },
                     "vat_posting_method": {
                         "$ref": "#/components/schemas/VatPostingMethodEnum"
+                    },
+                    "vat_reporting_method": {
+                        "$ref": "#/components/schemas/VatReportingMethodEnum"
                     },
                     "form": {
                         "$ref": "#/components/schemas/FormEnum"
@@ -5892,6 +7371,14 @@
                         "type": "integer",
                         "maximum": 999,
                         "minimum": 0
+                    },
+                    "invoicing_default_email_subject": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "invoicing_default_email_content": {
+                        "type": "string",
+                        "nullable": true
                     },
                     "has_accrual_based_entries_for_invoicing": {
                         "type": "boolean"
@@ -5957,7 +7444,7 @@
                     "invoicing_country": {
                         "type": "string",
                         "nullable": true,
-                        "maxLength": 32
+                        "maxLength": 2
                     },
                     "has_business_address": {
                         "type": "string",
@@ -5981,41 +7468,45 @@
                     "business_country": {
                         "type": "string",
                         "nullable": true,
-                        "maxLength": 32
+                        "maxLength": 2
                     },
-                    "account_yle_tax_id": {
+                    "account_yle_tax": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_tax_deferrals_id": {
+                    "account_tax_deferrals": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_income_tax_rec_id": {
+                    "account_income_tax_rec": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_income_tax_lia_id": {
+                    "account_income_tax_lia": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_previous_profit_id": {
+                    "account_previous_profit": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_vat_receivables_id": {
+                    "account_vat_receivables": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_vat_liabilities_id": {
+                    "account_vat_liabilities": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_trade_receivables_id": {
+                    "account_vat_accrual_adjustment": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "account_payables_id": {
+                    "account_trade_receivables": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "account_payables": {
                         "type": "integer",
                         "nullable": true
                     },
@@ -6055,9 +7546,6 @@
                         "type": "boolean"
                     },
                     "onboarding_created_invoicing_product": {
-                        "type": "boolean"
-                    },
-                    "onboarding_einvoice_enabled": {
                         "type": "boolean"
                     },
                     "onboarding_registered_to_kravia": {
@@ -6106,18 +7594,6 @@
                         "readOnly": true,
                         "nullable": true
                     },
-                    "trial_progress_percentage": {
-                        "type": "integer",
-                        "readOnly": true
-                    },
-                    "trial_days_left": {
-                        "type": "integer",
-                        "readOnly": true
-                    },
-                    "is_trialing": {
-                        "type": "boolean",
-                        "readOnly": true
-                    },
                     "demo_days_left": {
                         "type": "integer",
                         "readOnly": true
@@ -6153,6 +7629,22 @@
                     },
                     "is_automatic_debt_collection_enabled": {
                         "type": "boolean"
+                    }
+                }
+            },
+            "PatchedBusinessIdentifier": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/BusinessIdentifierTypeEnum"
+                    },
+                    "value": {
+                        "type": "string",
+                        "maxLength": 64
                     }
                 }
             },
@@ -6247,7 +7739,7 @@
                     "invoicing_country": {
                         "type": "string",
                         "nullable": true,
-                        "maxLength": 32
+                        "maxLength": 2
                     },
                     "invoicing_language": {
                         "$ref": "#/components/schemas/InvoicingLanguageEnum"
@@ -6305,6 +7797,12 @@
                     "tos_accepted": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "saltedge_tos_accepted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "nullable": true
                     },
                     "last_csat": {
                         "type": "string",
@@ -6368,7 +7866,7 @@
                     }
                 }
             },
-            "PatchedDocument": {
+            "PatchedDocumentInstance": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -6440,14 +7938,14 @@
                     "attachment_ids": {
                         "type": "array",
                         "items": {
-                            "type": "integer"
+                            "type": "string"
                         },
-                        "description": "List of attachment IDs associated with this document."
+                        "description": "IDs of attachments associated with this document."
                     },
                     "type": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/DocumentTypeEnum"
+                                "$ref": "#/components/schemas/Type110Enum"
                             }
                         ],
                         "description": "The type of the document.\n\n* `0` - Normaali kirjaus\n* `3` - Arvonlisäverokirjaus\n* `4` - Poisto\n* `6` - YLE-vero\n* `7` - Tulovero",
@@ -6518,6 +8016,68 @@
                             "type": "integer"
                         },
                         "description": "List of tag IDs associated with this document."
+                    },
+                    "relations": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Combined list of incoming and outgoing document relations."
+                    },
+                    "has_accrual_pair_due_mismatch": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "shortcuts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Shortcut"
+                        },
+                        "readOnly": true
+                    }
+                }
+            },
+            "PatchedDocumentRelation": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "The date and time when the record was created."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "The date and time when the record was last updated."
+                    },
+                    "related_document": {
+                        "type": "integer",
+                        "description": "The related document of this relation."
+                    },
+                    "description": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Description of the related (target) document."
+                    },
+                    "role": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoleEnum"
+                            }
+                        ],
+                        "description": "Semantic role of the current document within this relation.\n\n* `ACCRUAL` - ACCRUAL\n* `SETTLEMENT` - SETTLEMENT"
+                    },
+                    "type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentRelationTypeEnum"
+                            }
+                        ],
+                        "description": "Type of relation that links the documents.\n\n* `ACCRUAL_PAIR` - ACCRUAL_PAIR"
                     }
                 }
             },
@@ -6777,7 +8337,7 @@
                     "document": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         ],
                         "readOnly": true
@@ -6791,6 +8351,13 @@
                                 "$ref": "#/components/schemas/AutomaticDebtCollectionStatusEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "external_status_messages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InvoiceExternalStatusMessage"
+                        },
                         "readOnly": true
                     }
                 }
@@ -6936,6 +8503,11 @@
                         "nullable": true,
                         "maxLength": 32
                     },
+                    "message": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 140
+                    },
                     "original_invoice_xml": {
                         "type": "string",
                         "format": "uri",
@@ -6976,7 +8548,7 @@
                                 "$ref": "#/components/schemas/ImportSourceEnum"
                             }
                         ],
-                        "description": "Tells the source where the invoice was imported from.\n\n* `APIX` - Apix\n* `EMAIL` - Email\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
+                        "description": "Tells the source where the invoice was imported from.\n\n* `APIX` - Apix\n* `EMAIL` - Email\n* `UPLOAD` - Lataus\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
                     },
                     "payment": {
                         "allOf": [
@@ -6984,6 +8556,10 @@
                                 "$ref": "#/components/schemas/PaymentInstruction"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "pis_payment": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "payment_date": {
@@ -7003,7 +8579,7 @@
                     "document": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         ],
                         "readOnly": true
@@ -7363,6 +8939,11 @@
                         "nullable": true,
                         "maxLength": 32
                     },
+                    "message": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 140
+                    },
                     "original_invoice_xml": {
                         "type": "string",
                         "format": "uri",
@@ -7403,7 +8984,7 @@
                                 "$ref": "#/components/schemas/ImportSourceEnum"
                             }
                         ],
-                        "description": "Tells the source where the invoice was imported from.\n\n* `APIX` - Apix\n* `EMAIL` - Email\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
+                        "description": "Tells the source where the invoice was imported from.\n\n* `APIX` - Apix\n* `EMAIL` - Email\n* `UPLOAD` - Lataus\n* `VAT_PURCHASE_INVOICE` - ALV-ostolasku"
                     },
                     "payment": {
                         "allOf": [
@@ -7411,6 +8992,10 @@
                                 "$ref": "#/components/schemas/PaymentInstruction"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "pis_payment": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "payment_date": {
@@ -7430,7 +9015,7 @@
                     "document": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/Document"
+                                "$ref": "#/components/schemas/DocumentList"
                             }
                         ],
                         "readOnly": true
@@ -7450,6 +9035,7 @@
                     "original_invoice_xml",
                     "payment",
                     "payment_date",
+                    "pis_payment",
                     "updated_at",
                     "virtuaaliviivakoodi"
                 ]
@@ -7461,6 +9047,31 @@
                 ],
                 "type": "string",
                 "description": "* `KEEP` - Keep\n* `ROLL` - Roll"
+            },
+            "RoleEnum": {
+                "enum": [
+                    "ACCRUAL",
+                    "SETTLEMENT"
+                ],
+                "type": "string",
+                "description": "* `ACCRUAL` - ACCRUAL\n* `SETTLEMENT` - SETTLEMENT"
+            },
+            "Shortcut": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Unique key identifying the shortcut."
+                    },
+                    "is_promoted": {
+                        "type": "boolean",
+                        "description": "Indicates whether the shortcut is promoted."
+                    }
+                },
+                "required": [
+                    "is_promoted",
+                    "key"
+                ]
             },
             "Tag": {
                 "type": "object",
@@ -7502,6 +9113,17 @@
                     "id",
                     "updated_at"
                 ]
+            },
+            "Type110Enum": {
+                "enum": [
+                    0,
+                    3,
+                    4,
+                    6,
+                    7
+                ],
+                "type": "integer",
+                "description": "* `0` - Normaali kirjaus\n* `3` - Arvonlisäverokirjaus\n* `4` - Poisto\n* `6` - YLE-vero\n* `7` - Tulovero"
             },
             "Type92dEnum": {
                 "enum": [
@@ -7545,7 +9167,7 @@
                 "type": "integer",
                 "description": "* `1` - Kotimaan verollinen myynti\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `10` - Rakennuspalveluiden myynti\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle"
             },
-            "VatCode5f1Enum": {
+            "VatCode585Enum": {
                 "enum": [
                     1,
                     2,
@@ -7556,6 +9178,7 @@
                     7,
                     8,
                     9,
+                    15,
                     14,
                     10,
                     11,
@@ -7563,7 +9186,7 @@
                     13
                 ],
                 "type": "integer",
-                "description": "* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle"
+                "description": "* `1` - Kotimaan verollinen myynti\n* `2` - Kotimaan verollinen osto\n* `3` - Veroton\n* `4` - Nollaverokannan myynti\n* `5` - Tavaroiden myynti EU-maihin\n* `6` - Palveluiden myynti EU-maihin\n* `7` - Tavaroiden ostot EU-maista\n* `8` - Palveluiden ostot EU-maista\n* `9` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `15` - Tavaroiden maahantuonti EU:n ulkopuolelta\n* `14` - Palveluostot EU:n ulkopuolelta\n* `10` - Rakennuspalveluiden myynti\n* `11` - Rakennuspalveluiden osto\n* `12` - Palvelumyynnit EU:n ulkopuolelle\n* `13` - Tavaroiden myynti EU:n ulkopuolelle"
             },
             "VatMethodEnum": {
                 "enum": [
@@ -7579,7 +9202,15 @@
                     "SPLIT"
                 ],
                 "type": "string",
-                "description": "* `NET` - NET\n* `SPLIT` - SPLIT"
+                "description": "* `NET` - ALV netotus\n* `SPLIT` - ALV jaettu kirjaus"
+            },
+            "VatReportingMethodEnum": {
+                "enum": [
+                    "DEFAULT",
+                    "DE_CASH_BASIS"
+                ],
+                "type": "string",
+                "description": "* `DEFAULT` - ALV kirjanpidon päivälle\n* `DE_CASH_BASIS` - ALV maksupäivänä (DE maksu)"
             }
         }
     },
@@ -7606,6 +9237,12 @@
                 "Contacts",
                 "Products",
                 "Invoices"
+            ]
+        },
+        {
+            "name": "Auth",
+            "tags": [
+                "JWT"
             ]
         }
     ],
