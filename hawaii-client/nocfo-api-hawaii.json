@@ -49,6 +49,58 @@
             "updated_at"
           ]
         },
+        "DocumentList": {
+          "properties": {
+            "audit_trail_last_seen_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "audit_trail_last_mention_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "audit_trail_last_comment_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/DocumentRelation"
+              },
+              "nullable": true
+            }
+          }
+        },
+        "DocumentInstance": {
+          "properties": {
+            "audit_trail_last_seen_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "audit_trail_last_mention_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "audit_trail_last_comment_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/DocumentRelation"
+              },
+              "nullable": true
+            }
+          }
+        },
         "PaginatedAccountListList": {
           "properties": {
             "prev": {
