@@ -15,9 +15,9 @@ type StreamAlignment<'T1, 'T2> =
 
 module Streams =
 
-    let alignByKey
-        (keyL: 'L -> int)
-        (keyR: 'R -> int)
+    let alignByKey<'L, 'R, 'Key when 'Key : comparison>
+        (keyL: 'L -> 'Key)
+        (keyR: 'R -> 'Key)
         (left : AsyncSeq<'L>)
         (right: AsyncSeq<'R>)
         : AsyncSeq<StreamAlignment<'L,'R>> =

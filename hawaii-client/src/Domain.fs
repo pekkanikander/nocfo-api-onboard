@@ -95,6 +95,17 @@ type DocumentRow  = NocfoApi.Types.DocumentList
 type Document     = Hydratable<DocumentFull, DocumentRow>
 
 /// ------------------------------------------------------------
+/// Mapping output DTOs
+/// ------------------------------------------------------------
+
+module Mapping =
+  [<CLIMutable>]
+  type IDMap =
+    { source_id: int
+      target_id: int
+      number: string }
+
+/// ------------------------------------------------------------
 /// Domain-level error channel (extend as needed)
 /// ------------------------------------------------------------
 exception DomainStreamException of DomainError
@@ -108,14 +119,14 @@ module AsyncSeqResult =
 
 module Alignment =
 
-  let inline alignEntries< ^L, ^R, 'r
-    when ^L : (member id : int)
-     and ^R : (member id : int) >
-    (onAligned     : ^L -> ^R -> Result<'r, DomainError>)
-    (onMissingLeft : ^R -> Result<'r, DomainError>)   // right-only
-    (onMissingRight: ^L -> Result<'r, DomainError>)   // left-only
-    (left          : AsyncSeq<Result<^L, DomainError>>)
-    (right         : AsyncSeq<Result<^R, DomainError>>)
+  let alignEntries<'L, 'R, 'K, 'r when 'K : comparison>
+    (keyL          : 'L -> 'K)
+    (keyR          : 'R -> 'K)
+    (onAligned     : 'L -> 'R -> Result<'r, DomainError>)
+    (onMissingLeft : 'R -> Result<'r, DomainError>)   // right-only
+    (onMissingRight: 'L -> Result<'r, DomainError>)   // left-only
+    (left          : AsyncSeq<Result<'L, DomainError>>)
+    (right         : AsyncSeq<Result<'R, DomainError>>)
     : AsyncSeq<Result<'r, DomainError>> =
 
     let computation () =
@@ -123,8 +134,8 @@ module Alignment =
       let rightPlain = AsyncSeqResult.unwrapOrThrow right
 
       NocfoClient.Streams.alignByKey
-        (fun (l: ^L) -> l.id)
-        (fun (r: ^R) -> r.id)
+        keyL
+        keyR
         leftPlain
         rightPlain
       |> AsyncSeq.map (function
@@ -156,7 +167,9 @@ module Alignment =
       let key = missingAccount.id
       Error (DomainError.Unexpected $"Alignment failure: missing account for CSV id {key}.")
 
-    alignEntries<AccountFull, AccountDelta, AccountFull * AccountDelta>
+    alignEntries<AccountFull, AccountDelta, int, AccountFull * AccountDelta>
+      (fun account -> account.id)
+      (fun delta -> delta.id)
       onAligned onMissingLeft onMissingRight accounts deltas
 
   // New behaviour, allow CSV file to have missing rows.
@@ -177,7 +190,10 @@ module Alignment =
     let onMissingRight (_missingAccount: AccountFull) =
       Ok None
 
-    alignEntries<AccountFull, AccountDelta, Option<AccountFull * AccountDelta>> onAligned onMissingLeft onMissingRight accounts deltas
+    alignEntries<AccountFull, AccountDelta, int, Option<AccountFull * AccountDelta>>
+      (fun account -> account.id)
+      (fun delta -> delta.id)
+      onAligned onMissingLeft onMissingRight accounts deltas
 
 
 /// ------------------------------------------------------------
