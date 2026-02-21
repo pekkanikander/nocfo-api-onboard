@@ -11,6 +11,8 @@ type ToolConfig =
     {
         BaseUrl: Uri
         Token: string
+        SourceToken: string option
+        SourceBaseUrl: Uri
     }
 
 /// Shared runtime context derived from configuration.
@@ -32,9 +34,19 @@ module Runtime =
     [<Literal>]
     let private DefaultBaseUrl = "https://api-tst.nocfo.io"
     [<Literal>]
+    let private DefaultSourceBaseUrl = "https://api-prd.nocfo.io"
+    [<Literal>]
     let private TokenVar = "NOCFO_TOKEN"
     [<Literal>]
+    let private TargetTokenVar = "NOCFO_TARGET_TOKEN"
+    [<Literal>]
+    let private SourceTokenVar = "NOCFO_SOURCE_TOKEN"
+    [<Literal>]
     let private BaseUrlVar = "NOCFO_BASE_URL"
+    [<Literal>]
+    let private TargetBaseUrlVar = "NOCFO_TARGET_BASE_URL"
+    [<Literal>]
+    let private SourceBaseUrlVar = "NOCFO_SOURCE_BASE_URL"
 
     let private tryEnv name =
         match Environment.GetEnvironmentVariable(name) with
@@ -57,29 +69,53 @@ module Runtime =
             { Config = cfg; Accounting = accounting; Input = input; Output = output }
 
         let fromEnvironment () =
-            let baseUrlResult =
-                match tryEnv BaseUrlVar with
-                | None -> Ok (Uri DefaultBaseUrl)
+            let parseBaseUrl envVar defaultValue =
+                match tryEnv envVar with
+                | None -> Ok (Uri defaultValue)
                 | Some value ->
                     match Uri.TryCreate(value, UriKind.Absolute) with
                     | true, uri -> Ok uri
-                    | false, _ -> Error (InvalidUri (BaseUrlVar, value))
+                    | false, _ -> Error (InvalidUri (envVar, value))
 
-            let tokenResult =
-                match tryEnv TokenVar with
+            let targetBaseUrlResult =
+                match tryEnv TargetBaseUrlVar with
+                | Some value ->
+                    match Uri.TryCreate(value, UriKind.Absolute) with
+                    | true, uri -> Ok uri
+                    | false, _ -> Error (InvalidUri (TargetBaseUrlVar, value))
+                | None -> parseBaseUrl BaseUrlVar DefaultBaseUrl
+
+            let sourceBaseUrlResult =
+                match tryEnv SourceBaseUrlVar with
+                | None -> Ok (Uri DefaultSourceBaseUrl)
+                | Some value ->
+                    match Uri.TryCreate(value, UriKind.Absolute) with
+                    | true, uri -> Ok uri
+                    | false, _ -> Error (InvalidUri (SourceBaseUrlVar, value))
+
+            let targetTokenResult =
+                match tryEnv TargetTokenVar with
                 | Some token -> Ok token
-                | None -> Error (MissingEnvironmentVariable TokenVar)
+                | None ->
+                    match tryEnv TokenVar with
+                    | Some token -> Ok token
+                    | None -> Error (MissingEnvironmentVariable $"{TargetTokenVar} (fallback: {TokenVar})")
 
-            match baseUrlResult, tokenResult with
-            | Ok baseUrl, Ok token ->
-                Ok { BaseUrl = baseUrl; Token = token }
+            let sourceToken = tryEnv SourceTokenVar
+
+            match targetBaseUrlResult, targetTokenResult, sourceBaseUrlResult with
+            | Ok baseUrl, Ok token, Ok sourceBaseUrl ->
+                Ok { BaseUrl = baseUrl; Token = token; SourceToken = sourceToken; SourceBaseUrl = sourceBaseUrl }
             | _ ->
                 let errors =
                     [
-                        match baseUrlResult with
+                        match targetBaseUrlResult with
                         | Error e -> yield e
                         | _ -> ()
-                        match tokenResult with
+                        match targetTokenResult with
+                        | Error e -> yield e
+                        | _ -> ()
+                        match sourceBaseUrlResult with
                         | Error e -> yield e
                         | _ -> ()
                     ]

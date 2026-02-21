@@ -30,7 +30,8 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
 1. **Prerequisites**
    - .NET 9 SDK (`dotnet --version` ≥ 9.0)
    - macOS or Linux shell (the code itself is cross-platform)
-   - `NOCFO_TOKEN` exported; optionally `NOCFO_BASE_URL` (defaults to `https://api-tst.nocfo.io`)
+  - `NOCFO_TARGET_TOKEN` (or fallback `NOCFO_TOKEN`) exported; optionally `NOCFO_TARGET_BASE_URL` (defaults to `https://api-tst.nocfo.io`)
+  - `NOCFO_SOURCE_TOKEN` only when running dual-environment commands like `map accounts`
 
    ```bash
    export NOCFO_TOKEN="paste-your-token"
@@ -75,14 +76,29 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      -b <business-id> < ids-to-delete.csv
    ```
 
+8. **Map account IDs between environments** (source -> target by account `number`):
+   ```bash
+   NOCFO_SOURCE_TOKEN="paste-source-token" \
+   dotnet run --project tools -- map accounts \
+     -b <business-id> > csv/account-id-map.csv
+   ```
+
+9. **Create minimal documents in target**:
+   ```bash
+   dotnet run --project tools -- create documents \
+     -b <target-business-id> \
+     --account-id-map csv/account-id-map.csv \
+     < csv/documents-create.csv
+   ```
+
 ### CLI Notes
 
 - `--fields` controls both which columns are emitted and which columns are read back.
   `id` is always required when executing updates or deletes.
 - Output defaults to stdout and input defaults to stdin; `--out`/`--in` override
   those streams without shell redirection.
-- Currently implemented verbs: `list businesses`, `list accounts`, `list documents`, `update accounts`,
-  `delete accounts`. Documents are currently list-only, and business updates/account creation are still stubbed.
+- Currently implemented verbs: `list`, `update accounts`, `delete accounts`, `map accounts`,
+  and minimal `create documents`.
 - Errors and HTTP traces go to stderr so you can keep piping stdout to files.
 
 See `tools/README.md` for a deeper dive into configuration, CSV expectations,
