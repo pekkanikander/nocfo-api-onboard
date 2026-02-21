@@ -94,6 +94,20 @@ type DocumentFull = NocfoApi.Types.DocumentList
 type DocumentRow  = NocfoApi.Types.DocumentList
 type Document     = Hydratable<DocumentFull, DocumentRow>
 
+[<CLIMutable>]
+type DocumentCreatePayload =
+  { date: string option
+    description: string option
+    is_draft: bool option
+    ``type``: Newtonsoft.Json.Linq.JToken option
+    blueprint: Newtonsoft.Json.Linq.JToken option }
+
+type DocumentCommand =
+  | CreateDocument of DocumentCreatePayload
+
+type DocumentResult =
+  | DocumentCreated of DocumentFull
+
 /// ------------------------------------------------------------
 /// Mapping output DTOs
 /// ------------------------------------------------------------
@@ -446,6 +460,34 @@ module Streams =
                 |> AsyncResult.map (fun () -> AccountDeleted id))
       | AccountCommand.CreateAccount _ ->
           raise (DomainStreamException (DomainError.Unexpected "CreateAccount is not supported yet."))
+
+    asyncSeq {
+      try
+        yield!
+          commands
+          |> AsyncSeqResult.unwrapOrThrow
+          |> AsyncSeq.map mapCommandToOperation
+          |> NocfoClient.Streams.streamChanges (fun op -> op ())
+          |> mapHttpError
+      with
+      | DomainStreamException err ->
+          yield Error err
+    }
+
+  let executeDocumentCommands
+    (context: BusinessContext)
+    (commands: AsyncSeq<Result<DocumentCommand, DomainError>>)
+    : AsyncSeq<Result<DocumentResult, DomainError>> =
+
+    let createPath =
+      Endpoints.documentsBySlug context.key.slug
+
+    let mapCommandToOperation (command: DocumentCommand) =
+      match command with
+      | DocumentCommand.CreateDocument payload ->
+          (fun () ->
+                Http.postJson<DocumentCreatePayload, DocumentFull> context.ctx.http createPath payload
+                |> AsyncResult.map DocumentCreated)
 
     asyncSeq {
       try

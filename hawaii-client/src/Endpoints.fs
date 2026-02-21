@@ -11,3 +11,5 @@ module Endpoints =
 
     let documentsBySlugPage (slug: string) (page: int) =
         $"/business/{slug}/document/?page_size=100&page={page}"
+    let documentsBySlug (slug: string) =
+        $"/business/{slug}/document/"

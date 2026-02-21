@@ -111,6 +111,10 @@ module Http =
     let patchJson<'Payload, 'Response> (httpContext: HttpContext) (path: string) (payload: 'Payload) =
         sendJson<'Response> httpContext HttpMethod.Patch path (withJsonContent payload)
 
+    /// POST with JSON payload and decode a JSON response body.
+    let postJson<'Payload, 'Response> (httpContext: HttpContext) (path: string) (payload: 'Payload) =
+        sendJson<'Response> httpContext HttpMethod.Post path (withJsonContent payload)
+
     /// DELETE with JSON response body (e.g., when API returns a payload on delete success)
     let deleteJson<'Response> (httpContext: HttpContext) (path: string) =
         sendJson<'Response> httpContext HttpMethod.Delete path id
