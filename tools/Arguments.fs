@@ -99,6 +99,7 @@ module CvsMapping =
     /// Normalize a list into a clean, ordered list.
     let normalizeFields (fields: string list) : string list =
         fields
+        |> List.collect (fun token -> token.Split(',') |> Array.toList)
         |> List.map (fun s -> s.Trim())
         |> List.filter (fun s -> s <> "")
 

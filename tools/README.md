@@ -16,7 +16,7 @@ dotnet run --project tools -- list businesses \
   --fields "id,name,slug" > businesses.csv
 
 dotnet run --project tools -- list accounts \
-  -b <business-id> --fields "id,number,name,type" > accounts.csv
+  -b <business-id> --fields id number name type > accounts.csv
 
 dotnet run --project tools -- list documents \
   -b <business-id> --fields "id,number,date,balance" > documents.csv
@@ -65,7 +65,7 @@ Unimplemented (exit code `1` with a TODO):
 
 ## CSV expectations
 
-- `--fields` accepts a list of top-level DTO property names. The same selection applies to both output and input.
+- `--fields` accepts top-level DTO property names as comma-separated and/or space-separated input (for example `--fields "id,name"` or `--fields id name`). The same selection applies to both output and input.
 - `id` is always required when reading updates or deletes; `Program.fs` prepends it for you even if `--fields` omits it.
 - Account rows must remain ordered by `id`. `Account.deltasToCommands` aligns the live stream with the CSV by walking both sequences in lockstep; reordering breaks alignment.
 - Collections of strings are stored as `;`-separated lists. `option<_>` values use empty cells for `None`.
