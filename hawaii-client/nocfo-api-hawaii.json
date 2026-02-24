@@ -2,7 +2,7 @@
   "schema": "api/openapi.json",
   "project": "NocfoApi",
   "output": "generated",
-  "target": "fsharp",
+  "target": "fsharp-native",
   "synchronous": false,
   "asyncReturnType": "async",
   "resolveReferences": false,
