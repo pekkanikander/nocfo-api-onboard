@@ -23,6 +23,7 @@ module Http =
         url: Uri
         statusCode: HttpStatusCode
         body: string
+        requestBody: string option
     }
 
     let ofHttpClient (client: HttpClient) (token: string) =
@@ -52,15 +53,31 @@ module Http =
         if response.IsSuccessStatusCode then
             return Ok content
         else
+            let! requestBody =
+                async {
+                    if isNull request.Content then
+                        return None
+                    else
+                        let! body = request.Content.ReadAsStringAsync() |> Async.AwaitTask
+                        if String.IsNullOrWhiteSpace body then
+                            return None
+                        else
+                            return Some body
+                }
             eprintfn "Request failed: %s %s %s %s"
                 request.Method.Method
                 request.RequestUri.OriginalString
                 (response.StatusCode.ToString())
                 (content.Substring(0, min 100 content.Length))
+            match requestBody with
+            | Some body ->
+                eprintfn "Request payload: %s" body
+            | None -> ()
             return Error {
                 url = request.RequestUri
                 statusCode = response.StatusCode
                 body = content
+                requestBody = requestBody
             }
     }
 
@@ -78,6 +95,7 @@ module Http =
                         url = url
                         statusCode = enum<HttpStatusCode>(0)
                         body = $"Decode error: {ex.Message}\nBody: {body}"
+                        requestBody = None
                     }
         | Error e -> Error e
 
