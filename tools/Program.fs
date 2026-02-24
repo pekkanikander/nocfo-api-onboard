@@ -106,7 +106,7 @@ let updateBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesAr
         return 1 // TODO: implement
     }
 
-let foldCommandResults (results: AsyncSeq<Result<AccountResult, DomainError>>) : Async<int> =
+let foldAccountCommandResults (results: AsyncSeq<Result<AccountResult, DomainError>>) : Async<int> =
     async {
         let! errorCount =
             results
@@ -159,7 +159,7 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
             return!
                 Account.deltasToCommands accountStream csvStream
                 |> Streams.executeAccountCommands ctx
-                |> foldCommandResults
+                |> foldAccountCommandResults
         | Error error ->
             eprintfn "Failed to get business context: %A" error
             return 1
@@ -181,7 +181,7 @@ let deleteAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
             return!
                 commands
                 |> Streams.executeAccountCommands ctx
-                |> foldCommandResults
+                |> foldAccountCommandResults
         | Error error ->
             eprintfn "Failed to get business context: %A" error
             return 1

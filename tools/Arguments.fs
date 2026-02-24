@@ -48,11 +48,11 @@ type MapEntitiesArgs =
             match this with
             | Accounts _   -> "Map account identifiers between source and target environments."
 
-[<CliPrefix(CliPrefix.None)>]
+[<RequireSubcommand>]
 type DocumentCreateArgs =
     | [< AltCommandLine("-b"); Mandatory >]       BusinessId of string
-    | [< AltCommandLine("--account-id-map") >]    AccountIdMap of string
-    | [< AltCommandLine("--strict") >]            Strict
+    | [< AltCommandLine("-m") >]                  AccountIdMap of string
+    | [< AltCommandLine("-s") >]                  Strict
     interface IArgParserTemplate with
         member this.Usage =
             match this with
