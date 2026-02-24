@@ -104,9 +104,11 @@ type DocumentCreatePayload =
 
 type DocumentCommand =
   | CreateDocument of DocumentCreatePayload
+  | DeleteDocument of documentId:int
 
 type DocumentResult =
   | DocumentCreated of DocumentFull
+  | DocumentDeleted of int
 
 /// ------------------------------------------------------------
 /// Mapping output DTOs
@@ -482,12 +484,19 @@ module Streams =
     let createPath =
       Endpoints.documentsBySlug context.key.slug
 
+    let deletePath (documentId: int) =
+      Endpoints.documentById context.key.slug (string documentId)
+
     let mapCommandToOperation (command: DocumentCommand) =
       match command with
       | DocumentCommand.CreateDocument payload ->
           (fun () ->
                 Http.postJson<DocumentCreatePayload, DocumentFull> context.ctx.http createPath payload
                 |> AsyncResult.map DocumentCreated)
+      | DocumentCommand.DeleteDocument id ->
+          (fun () ->
+                Http.deleteJson<unit> context.ctx.http (deletePath id)
+                |> AsyncResult.map (fun () -> DocumentDeleted id))
 
     asyncSeq {
       try

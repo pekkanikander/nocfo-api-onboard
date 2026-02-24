@@ -54,13 +54,14 @@ Requirements:
 | `list documents -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams documents, hydrates them, writes CSV | Documents are currently list-only in the CLI |
 | `update accounts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), aligns each row by `id`, emits PATCH commands for changed fields only | CSV **must** include `id` and remain ordered to match the streamed accounts |
 | `delete accounts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
+| `delete documents -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
 | `map accounts -b <id>` | Resolves source+target business contexts and emits `source_id,target_id,number` matches by account `number` | Prints missing-target warnings to stderr; exit code is `EX_DATAERR` when warnings exist |
 | `create documents -b <id> [--account-id-map <path>] [--strict] [--fields …]` | Reads minimal document-create CSV and POSTs documents sequentially | Optional blueprint account-id remap via mapping CSV |
 
 Unimplemented (exit code `1` with a TODO):
 
 - `update businesses`
-- `update documents` / `delete documents`
+- `update documents`
 - `create accounts` / `create businesses` (alignment currently assumes “desired state” rather than inserts)
 
 ## CSV expectations

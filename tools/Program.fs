@@ -133,11 +133,18 @@ let foldDocumentCommandResults (results: AsyncSeq<Result<DocumentResult, DomainE
                 | Ok (DocumentCreated document) ->
                     printfn "Created document %d (%s)" document.id (defaultArg document.number "<none>")
                     errorCount
+                | Ok (DocumentDeleted documentId) ->
+                    printfn "Deleted document %d" documentId
+                    errorCount
                 | Error err ->
                     printfn "Command failed: %A" err
                     errorCount + 1) 0
         return if errorCount > 0 then 1 else 0
     }
+
+[<CLIMutable>]
+type private DocumentDeletePayload =
+    { id: int }
 
 let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
     async {
@@ -187,6 +194,28 @@ let deleteAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
             return 1
     }
 
+let deleteDocuments (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
+    async {
+        let f = "id" :: fields
+        let input = toolContext.Input
+        let csvStream =
+            Nocfo.Tools.Csv.readCsvGeneric<DocumentDeletePayload> input (Some f)
+            |> AsyncSeq.map Ok
+        let! businessContext = getBusinessContext toolContext args
+        match businessContext with
+        | Ok ctx ->
+            let commands =
+                csvStream
+                |> AsyncSeq.map (Result.map (fun document -> DocumentCommand.DeleteDocument document.id))
+            return!
+                commands
+                |> Streams.executeDocumentCommands ctx
+                |> foldDocumentCommandResults
+        | Error error ->
+            eprintfn "Failed to get business context: %A" error
+            return 1
+    }
+
 // XXX: TODO: Implement an abstract 'command' type and a map of commands to functions.
 let list (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
     async {
@@ -215,6 +244,7 @@ let delete (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
         return!
             match entityTypeAndArgs with
             | EntitiesArgs.Accounts args -> deleteAccounts toolContext args fields
+            | EntitiesArgs.Documents args -> deleteDocuments toolContext args fields
             | _ -> failwith "Unknown entity type"
     }
 
