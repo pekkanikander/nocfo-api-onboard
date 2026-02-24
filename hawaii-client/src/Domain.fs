@@ -508,7 +508,7 @@ module Streams =
 
 module BusinessResolver =
   /// Build candidate identifiers from a free-form CLI argument.
-  /// Supports prefixes like "Y-tunnus" or "VAT-code"; without a prefix we try both.
+  /// We try both 'Y_tunnus' and 'Vat_code' identifiers.
   let private formIdentifierCandidates (input: string) : BusinessIdentifier list =
     let trimmed = input.Trim()
 
