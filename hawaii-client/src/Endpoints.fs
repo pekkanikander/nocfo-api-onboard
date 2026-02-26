@@ -18,3 +18,5 @@ module Endpoints =
 
     let contactsBySlugPage (slug: string) (page: int) =
         $"/business/{slug}/contacts/?page_size=100&page={page}"
+    let contactById (slug: string) (id: string) =
+        $"/business/{slug}/contacts/{id}/"

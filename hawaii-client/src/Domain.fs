@@ -118,6 +118,12 @@ type ContactFull = NocfoApi.Types.Contact
 type ContactRow  = NocfoApi.Types.Contact
 type Contact     = Hydratable<ContactFull, ContactRow>
 
+type ContactCommand =
+  | DeleteContact of contactId:int
+
+type ContactResult =
+  | ContactDeleted of int
+
 /// ------------------------------------------------------------
 /// Mapping output DTOs
 /// ------------------------------------------------------------
@@ -525,6 +531,34 @@ module Streams =
           (fun () ->
                 Http.deleteJson<unit> context.ctx.http (deletePath id)
                 |> AsyncResult.map (fun () -> DocumentDeleted id))
+
+    asyncSeq {
+      try
+        yield!
+          commands
+          |> AsyncSeqResult.unwrapOrThrow
+          |> AsyncSeq.map mapCommandToOperation
+          |> NocfoClient.Streams.streamChanges (fun op -> op ())
+          |> mapHttpError
+      with
+      | DomainStreamException err ->
+          yield Error err
+    }
+
+  let executeContactCommands
+    (context: BusinessContext)
+    (commands: AsyncSeq<Result<ContactCommand, DomainError>>)
+    : AsyncSeq<Result<ContactResult, DomainError>> =
+
+    let deletePath (contactId: int) =
+      Endpoints.contactById context.key.slug (string contactId)
+
+    let mapCommandToOperation (command: ContactCommand) =
+      match command with
+      | ContactCommand.DeleteContact id ->
+          (fun () ->
+                Http.deleteJson<unit> context.ctx.http (deletePath id)
+                |> AsyncResult.map (fun () -> ContactDeleted id))
 
     asyncSeq {
       try
