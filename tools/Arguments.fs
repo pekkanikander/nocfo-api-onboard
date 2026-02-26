@@ -29,6 +29,7 @@ type EntitiesArgs =
     | [< AltCommandLine("-i"); Inherit >]         Fields of fields: string list
     | [< AltCommandLine("-f"); Inherit >]         Format of format: string
     | [< NoPrefix; SubCommand >]                  Accounts of ParseResults<BusinessScopedArgs>
+    | [< NoPrefix; SubCommand >]                  Contacts of ParseResults<BusinessScopedArgs>
     | [< NoPrefix; SubCommand >]                  Documents of ParseResults<BusinessScopedArgs>
     | [< NoPrefix; SubCommand >]                  Businesses of ParseResults<BusinessesArgs>
     interface IArgParserTemplate with
@@ -37,6 +38,7 @@ type EntitiesArgs =
             | Fields _     -> "Comma-separated list of fields to list/update/... (default: all)."
             | Format _     -> "Input/outputformat (currently only csv)."
             | Accounts _   -> "Accounts of a business."
+            | Contacts _   -> "Contacts of a business."
             | Documents _  -> "Documents of a business."
             | Businesses _ -> "Businesses."
 

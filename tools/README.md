@@ -18,6 +18,9 @@ dotnet run --project tools -- list businesses \
 dotnet run --project tools -- list accounts \
   -b <business-id> --fields id number name type > accounts.csv
 
+dotnet run --project tools -- list contacts \
+  -b <business-id> --fields "id,name,email,identifier" > contacts.csv
+
 dotnet run --project tools -- list documents \
   -b <business-id> --fields "id,number,date,balance" > documents.csv
 
@@ -51,6 +54,7 @@ Requirements:
 | --- | --- | --- |
 | `list businesses [--fields …]` | Streams every business the token can access and writes CSV | Default columns are the DTO fields; use `--fields` to select a subset |
 | `list accounts -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams accounts, hydrates them, writes CSV ordered by API `id` | Rows are emitted in ascending `id` order |
+| `list contacts -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams contacts, hydrates them, writes CSV | Contacts are emitted from the `/contacts/` endpoint |
 | `list documents -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams documents, hydrates them, writes CSV | Documents are currently list-only in the CLI |
 | `update accounts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), aligns each row by `id`, emits PATCH commands for changed fields only | CSV **must** include `id` and remain ordered to match the streamed accounts |
 | `delete accounts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
@@ -90,11 +94,11 @@ The context wraps the shared `Http.createHttpContext` and `Accounting.ofHttp` fr
 
 ## Internals
 
-- **Arguments** (`Arguments.fs`): Argu discriminated unions define `list`, `update`, `delete`, and nested subcommands (`businesses`, `accounts`, `documents`). `--fields` and `--format` live at the entity level.
+- **Arguments** (`Arguments.fs`): Argu discriminated unions define `list`, `update`, `delete`, and nested subcommands (`businesses`, `accounts`, `contacts`, `documents`). `--fields` and `--format` live at the entity level.
 - **Runtime + Streams** (`Tools.fs`): resolves env vars, builds `AccountingContext`, and routes CSV readers/writers.
 - **CSV helpers** (`CsvHelper.fs`): bridges CsvHelper with F# records, ensuring the CLI and scripts share the same converters.
 - **Program flow** (`Program.fs`):
-  - `list` commands: stream via `Streams.streamBusinesses`, `Streams.streamAccounts`, or `Streams.streamDocuments`, hydrate rows (`Streams.hydrateAndUnwrap`), write CSV lazily.
+  - `list` commands: stream via `Streams.streamBusinesses`, `Streams.streamAccounts`, `Streams.streamContacts`, or `Streams.streamDocuments`, hydrate rows (`Streams.hydrateAndUnwrap`), write CSV lazily.
   - `update` accounts: read CSV into `AsyncSeq<Result<PatchedAccount,_>>`, align with live accounts using `Account.deltasToCommands`, execute sequentially, print per-account status.
   - `delete` accounts: map CSV rows to `AccountCommand.DeleteAccount` and reuse the same execution + folding machinery.
   - `map accounts`: align source/target account streams by `number` and output `source_id,target_id,number`.

@@ -111,6 +111,14 @@ type DocumentResult =
   | DocumentDeleted of int
 
 /// ------------------------------------------------------------
+/// Contacts
+/// ------------------------------------------------------------
+
+type ContactFull = NocfoApi.Types.Contact
+type ContactRow  = NocfoApi.Types.Contact
+type Contact     = Hydratable<ContactFull, ContactRow>
+
+/// ------------------------------------------------------------
 /// Mapping output DTOs
 /// ------------------------------------------------------------
 
@@ -379,6 +387,19 @@ module Document =
     | Partial (_row, fetch) -> fetch ()
 
 ///
+/// Contact module operations
+///
+
+module Contact =
+  let ofRaw (raw: ContactFull) : Contact =
+    Hydratable.Full raw
+
+  let hydrate (contact: Contact) : Async<Result<Contact, DomainError>> =
+    match contact with
+    | Full _ -> async.Return (Ok contact)
+    | Partial (_row, fetch) -> fetch ()
+
+///
 /// Streams module operations —— maybe to be folded to the previous modules
 ///
 
@@ -419,6 +440,13 @@ module Streams =
        context.ctx.http
        (fun page -> Endpoints.documentsBySlugPage context.key.slug page)
     |> toDomain Document.ofRaw
+
+  /// Domain-level stream of contacts for a given business.
+  let streamContacts (context: BusinessContext) : AsyncSeq<Result<Contact, DomainError>> =
+    Streams.streamPaginated<PaginatedContactList, ContactFull>
+       context.ctx.http
+       (fun page -> Endpoints.contactsBySlugPage context.key.slug page)
+    |> toDomain Contact.ofRaw
 
 
   let hydrateAndUnwrap<'Full, 'Partial>

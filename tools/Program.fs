@@ -59,20 +59,25 @@ let private getBusinessContext (toolContext: ToolContext) (args: ParseResults<Bu
         return businessContext
     }
 
-let listAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
+let private listEntitiesForBusiness<'Full, 'Partial>
+    (toolContext: ToolContext)
+    (args: ParseResults<BusinessScopedArgs>)
+    (fields: string list)
+    (streamEntities: BusinessContext -> AsyncSeq<Result<Hydratable<'Full, 'Partial>, DomainError>>)
+    (hydrateFailureLabel: string) =
     async {
         let output = toolContext.Output
-        let! businessContext  = getBusinessContext toolContext args
+        let! businessContext = getBusinessContext toolContext args
         match businessContext with
         | Ok businessContext ->
             let rows =
-                Streams.streamAccounts businessContext
+                streamEntities businessContext
                 |> Streams.hydrateAndUnwrap
                 |> AsyncSeq.map (function
-                    | Ok account -> account
-                    | Error error -> failwithf "Failed to hydrate account: %A" error)
+                    | Ok entity -> entity
+                    | Error error -> failwithf "Failed to hydrate %s: %A" hydrateFailureLabel error)
             let writeCsv =
-                Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Account> output (Some fields) rows
+                Nocfo.Tools.Csv.writeCsvGeneric<'Full> output (Some fields) rows
             do! writeCsv |> AsyncSeq.iter ignore
             return 0
         | Error error ->
@@ -80,26 +85,29 @@ let listAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScopedAr
             return 1
     }
 
+let listAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
+    listEntitiesForBusiness<AccountFull, AccountRow>
+        toolContext
+        args
+        fields
+        Streams.streamAccounts
+        "account"
+
 let listDocuments (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
-    async {
-        let output = toolContext.Output
-        let! businessContext = getBusinessContext toolContext args
-        match businessContext with
-        | Ok businessContext ->
-            let rows =
-                Streams.streamDocuments businessContext
-                |> Streams.hydrateAndUnwrap
-                |> AsyncSeq.map (function
-                    | Ok document -> document
-                    | Error error -> failwithf "Failed to hydrate document: %A" error)
-            let writeCsv =
-                Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.DocumentList> output (Some fields) rows
-            do! writeCsv |> AsyncSeq.iter ignore
-            return 0
-        | Error error ->
-            eprintfn "Failed to get business context: %A" error
-            return 1
-    }
+    listEntitiesForBusiness<DocumentFull, DocumentRow>
+        toolContext
+        args
+        fields
+        Streams.streamDocuments
+        "document"
+
+let listContacts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
+    listEntitiesForBusiness<ContactFull, ContactRow>
+        toolContext
+        args
+        fields
+        Streams.streamContacts
+        "contact"
 
 let updateBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs>) =
     async {
@@ -224,6 +232,7 @@ let list (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
             match entityTypeAndArgs with
             | EntitiesArgs.Businesses args -> listBusinesses toolContext args fields
             | EntitiesArgs.Accounts args   -> listAccounts toolContext args fields
+            | EntitiesArgs.Contacts args   -> listContacts toolContext args fields
             | EntitiesArgs.Documents args  -> listDocuments toolContext args fields
             | _ -> failwith "Unknown entity type"
     }
