@@ -156,6 +156,9 @@ let foldContactCommandResults (results: AsyncSeq<Result<ContactResult, DomainErr
             results
             |> AsyncSeq.fold (fun errorCount result ->
                 match result with
+                | Ok (ContactUpdated contact) ->
+                    printfn "Updated contact %d (%s)" contact.id contact.name
+                    errorCount
                 | Ok (ContactDeleted contactId) ->
                     printfn "Deleted contact %d" contactId
                     errorCount
@@ -194,6 +197,32 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
                 Account.deltasToCommands accountStream csvStream
                 |> Streams.executeAccountCommands ctx
                 |> foldAccountCommandResults
+        | Error error ->
+            eprintfn "Failed to get business context: %A" error
+            return 1
+    }
+
+let updateContacts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
+    async {
+        let f = "id" :: fields
+        let input = toolContext.Input
+        let! businessContext  = getBusinessContext toolContext args
+        match businessContext with
+        | Ok ctx ->
+            // The desired state of contacts from the CSV file.
+            let csvStream =
+                Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedContact> input (Some f)
+                |> AsyncSeq.map Ok
+            // The current state of contacts from the API.
+            let contactStream =
+                Streams.streamContacts ctx
+                |> Streams.hydrateAndUnwrap
+            // Compute the deltas between the desired and current state.
+            // Convert the deltas to commands. Execute the commands. Return the exit code.
+            return!
+                Contact.deltasToCommands contactStream csvStream
+                |> Streams.executeContactCommands ctx
+                |> foldContactCommandResults
         | Error error ->
             eprintfn "Failed to get business context: %A" error
             return 1
@@ -285,6 +314,7 @@ let update  (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
             match entityTypeAndArgs with
             | EntitiesArgs.Businesses args -> updateBusinesses toolContext args
             | EntitiesArgs.Accounts args   -> updateAccounts toolContext args fields
+            | EntitiesArgs.Contacts args   -> updateContacts toolContext args fields
             | _ -> failwith "Unknown entity type"
     }
 

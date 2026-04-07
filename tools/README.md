@@ -28,6 +28,10 @@ dotnet run --project tools -- list documents \
 dotnet run --project tools -- update accounts \
   -b <business-id> --fields "id,number,name" < accounts.csv
 
+# edit contacts.csv keeping rows ordered by `id`
+dotnet run --project tools -- update contacts \
+  -b <business-id> --fields "id,name,invoicing_email,notes" < contacts.csv
+
 # map account IDs across environments by account number
 dotnet run --project tools -- map accounts \
   -b <business-id> > csv/account-id-map.csv
@@ -57,6 +61,7 @@ Requirements:
 | `list contacts -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams contacts, hydrates them, writes CSV | Contacts are emitted from the `/contacts/` endpoint |
 | `list documents -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams documents, hydrates them, writes CSV | Documents are currently list-only in the CLI |
 | `update accounts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), aligns each row by `id`, emits PATCH commands for changed fields only | CSV **must** include `id` and remain ordered to match the streamed accounts |
+| `update contacts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), aligns each row by `id`, emits PATCH commands for changed fields only | CSV **must** include `id` and remain ordered to match the streamed contacts |
 | `delete accounts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
 | `delete contacts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
 | `delete documents -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
@@ -74,6 +79,7 @@ Unimplemented (exit code `1` with a TODO):
 - `--fields` accepts top-level DTO property names as comma-separated and/or space-separated input (for example `--fields "id,name"` or `--fields id name`). The same selection applies to both output and input.
 - `id` is always required when reading updates or deletes; `Program.fs` prepends it for you even if `--fields` omits it.
 - Account rows must remain ordered by `id`. `Account.deltasToCommands` aligns the live stream with the CSV by walking both sequences in lockstep; reordering breaks alignment.
+- Contact rows should also remain ordered by `id`. `Contact.deltasToCommands` uses the same lockstep alignment strategy as accounts.
 - Collections of strings are stored as `;`-separated lists. `option<_>` values use empty cells for `None`.
 - Extra columns in the input are ignored when `--fields` is present; otherwise we validate that every header maps to a property.
 
@@ -100,7 +106,7 @@ The context wraps the shared `Http.createHttpContext` and `Accounting.ofHttp` fr
 - **CSV helpers** (`CsvHelper.fs`): bridges CsvHelper with F# records, ensuring the CLI and scripts share the same converters.
 - **Program flow** (`Program.fs`):
   - `list` commands: stream via `Streams.streamBusinesses`, `Streams.streamAccounts`, `Streams.streamContacts`, or `Streams.streamDocuments`, hydrate rows (`Streams.hydrateAndUnwrap`), write CSV lazily.
-  - `update` accounts: read CSV into `AsyncSeq<Result<PatchedAccount,_>>`, align with live accounts using `Account.deltasToCommands`, execute sequentially, print per-account status.
+  - `update` accounts/contacts: read CSV into `AsyncSeq<Result<PatchedAccount,_>>` / `AsyncSeq<Result<PatchedContact,_>>`, align with live API state using `Account.deltasToCommands` / `Contact.deltasToCommands`, execute sequentially, print per-entity status.
   - `delete` accounts: map CSV rows to `AccountCommand.DeleteAccount` and reuse the same execution + folding machinery.
   - `map accounts`: align source/target account streams by `number` and output `source_id,target_id,number`.
   - `create documents`: read minimal create payload rows, optionally rewrite blueprint account IDs, then POST documents sequentially.

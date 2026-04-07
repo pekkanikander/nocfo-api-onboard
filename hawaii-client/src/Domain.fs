@@ -114,14 +114,17 @@ type DocumentResult =
 /// Contacts
 /// ------------------------------------------------------------
 
-type ContactFull = NocfoApi.Types.Contact
-type ContactRow  = NocfoApi.Types.Contact
-type Contact     = Hydratable<ContactFull, ContactRow>
+type ContactFull  = NocfoApi.Types.Contact
+type ContactRow   = NocfoApi.Types.Contact
+type ContactDelta = NocfoApi.Types.PatchedContact
+type Contact      = Hydratable<ContactFull, ContactRow>
 
 type ContactCommand =
+  | UpdateContact of contactId:int * ContactDelta
   | DeleteContact of contactId:int
 
 type ContactResult =
+  | ContactUpdated of ContactFull
   | ContactDeleted of int
 
 /// ------------------------------------------------------------
@@ -405,6 +408,45 @@ module Contact =
     | Full _ -> async.Return (Ok contact)
     | Partial (_row, fetch) -> fetch ()
 
+  let diffContact (full: ContactFull) (patched: ContactDelta) : Result<ContactCommand option, DomainError> =
+    let id = patched.id
+    match id with
+    | None ->
+        Error (DomainError.Unexpected "Patched contact is missing required id.")
+    | Some contactId when contactId <> full.id ->
+        Error (DomainError.Unexpected $"Patched contact id {contactId} does not match hydrated contact id {full.id}.")
+    | Some contactId ->
+        let normalized = DeltaShape<ContactFull, ContactDelta>.Normalize(full, patched)
+        if DeltaShape<ContactFull, ContactDelta>.HasChanges normalized then
+          Ok (Some (ContactCommand.UpdateContact (contactId, normalized)))
+        else
+          Ok None
+
+  let deltasToCommands
+    (contacts: AsyncSeq<Result<ContactFull, DomainError>>)
+    (deltas: AsyncSeq<Result<ContactDelta, DomainError>>)
+    : AsyncSeq<Result<ContactCommand, DomainError>> =
+
+    Alignment.alignEntries<ContactFull, ContactDelta, Option<int>, Option<ContactFull * ContactDelta>>
+      (fun contact -> Some contact.id)
+      (fun delta -> delta.id)
+      (fun contact delta -> Ok (Some (contact, delta)))
+      (fun missingDelta ->
+        match missingDelta.id with
+        | Some key -> Error (DomainError.Unexpected $"Alignment failure: missing contact for CSV id {key}.")
+        | None -> Error (DomainError.Unexpected "Alignment failure: CSV row for contact update is missing id."))
+      (fun _missingContact -> Ok None)
+      contacts
+      deltas
+    |> AsyncSeq.collect (function
+        | Error err -> AsyncSeq.singleton (Error err)
+        | Ok None -> AsyncSeq.empty // No matching CSV row for this API contact -> no command.
+        | Ok (Some (contact, delta)) ->
+            match diffContact contact delta with
+            | Ok (Some command) -> AsyncSeq.singleton (Ok command)
+            | Ok None -> AsyncSeq.empty // No changes -> no command.
+            | Error err -> AsyncSeq.singleton (Error err))
+
 ///
 /// Streams module operations —— maybe to be folded to the previous modules
 ///
@@ -550,11 +592,18 @@ module Streams =
     (commands: AsyncSeq<Result<ContactCommand, DomainError>>)
     : AsyncSeq<Result<ContactResult, DomainError>> =
 
+    let patchPath (contactId: int) =
+      Endpoints.contactById context.key.slug (string contactId)
+
     let deletePath (contactId: int) =
       Endpoints.contactById context.key.slug (string contactId)
 
     let mapCommandToOperation (command: ContactCommand) =
       match command with
+      | ContactCommand.UpdateContact (id, delta) ->
+          (fun () ->
+                Http.patchJson<ContactDelta, ContactFull> context.ctx.http (patchPath id) delta
+                |> AsyncResult.map ContactUpdated)
       | ContactCommand.DeleteContact id ->
           (fun () ->
                 Http.deleteJson<unit> context.ctx.http (deletePath id)

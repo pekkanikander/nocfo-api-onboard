@@ -70,20 +70,28 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      --fields "id,number,name" < accounts.csv
    ```
 
-7. **Delete accounts** by piping a CSV with the account `id`s you want to drop:
+7. **Update contacts** by editing exported contacts (keep `id` and ordering) and piping
+   them back in:
+   ```bash
+   dotnet run --project tools -- update contacts \
+     -b <business-id> \
+     --fields "id,name,invoicing_email,notes" < contacts.csv
+   ```
+
+8. **Delete accounts** by piping a CSV with the account `id`s you want to drop:
    ```bash
    dotnet run --project tools -- delete accounts \
      -b <business-id> < ids-to-delete.csv
    ```
 
-8. **Map account IDs between environments** (source -> target by account `number`):
+9. **Map account IDs between environments** (source -> target by account `number`):
    ```bash
    NOCFO_SOURCE_TOKEN="paste-source-token" \
    dotnet run --project tools -- map accounts \
      -b <business-id> > csv/account-id-map.csv
    ```
 
-9. **Create minimal documents in target**:
+10. **Create minimal documents in target**:
    ```bash
    dotnet run --project tools -- create documents \
      -b <target-business-id> \
@@ -97,8 +105,8 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
   `id` is always required when executing updates or deletes.
 - Output defaults to stdout and input defaults to stdin; `--out`/`--in` override
   those streams without shell redirection.
-- Currently implemented verbs: `list`, `update accounts`, `delete accounts`, `map accounts`,
-  and minimal `create documents`.
+- Currently implemented verbs: `list`, `update accounts`, `update contacts`, `delete accounts`,
+  `delete contacts`, `delete documents`, `map accounts`, and minimal `create documents`.
 - Errors and HTTP traces go to stderr so you can keep piping stdout to files.
 
 See `tools/README.md` for a deeper dive into configuration, CSV expectations,
