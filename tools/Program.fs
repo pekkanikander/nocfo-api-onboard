@@ -173,19 +173,22 @@ type private DocumentDeletePayload =
     { id: int }
 
 [<CLIMutable>]
+type private AccountDeletePayload =
+    { id: int }
+
+[<CLIMutable>]
 type private ContactDeletePayload =
     { id: int }
 
 let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
     async {
-        let f = "id" :: fields
         let input = toolContext.Input
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok ctx ->
             // The desired state of accounts from the CSV file.
             let csvStream =
-                Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
+                Nocfo.Tools.Csv.readDeltas<AccountDelta, NocfoApi.Types.PatchedAccountRequest> input (Some fields)
                 |> AsyncSeq.map Ok
             // The current state of accounts from the API.
             let accountStream =
@@ -204,14 +207,13 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
 
 let updateContacts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArgs>) (fields: string list) =
     async {
-        let f = "id" :: fields
         let input = toolContext.Input
         let! businessContext  = getBusinessContext toolContext args
         match businessContext with
         | Ok ctx ->
             // The desired state of contacts from the CSV file.
             let csvStream =
-                Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedContact> input (Some f)
+                Nocfo.Tools.Csv.readDeltas<ContactDelta, NocfoApi.Types.PatchedContactRequest> input (Some fields)
                 |> AsyncSeq.map Ok
             // The current state of contacts from the API.
             let contactStream =
@@ -233,7 +235,7 @@ let deleteAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
         let f = "id" :: fields
         let input = toolContext.Input
         let csvStream =
-            Nocfo.Tools.Csv.readCsvGeneric<NocfoApi.Types.PatchedAccount> input (Some f)
+            Nocfo.Tools.Csv.readCsvGeneric<AccountDeletePayload> input (Some f)
             |> AsyncSeq.map Ok
         let! businessContext = getBusinessContext toolContext args
         match businessContext with

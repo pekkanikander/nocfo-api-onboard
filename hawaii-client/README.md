@@ -1,6 +1,6 @@
-# Hawaii Client (Iteration 5)
+# Hawaii Client
 
-> **Status:** Works with the live NoCFO test environment as of November 2025.
+> **Status:** Revalidated against the live NoCFO test environment on April 7, 2026.
 
 This folder contains the fifth iteration of our NoCFO API explorations:
 an F# façade over Hawaii-generated types with lazy streams, hydratable domain entities,
@@ -31,6 +31,18 @@ hawaii-client/
 Scripts with the `Test*.fsx` prefix expect the compiled library in `bin/Debug` plus the generated DLLs under `generated/bin`.
 They are small, self-contained experiments rather than polished CLI tools.
 
+Read-only scripts:
+- `TestClient.fsx`
+- `TestDeltaShape.fsx`
+- `TestAlignAccountsPermissive.fsx`
+- `TestBalance.fsx`
+
+Mutating or potentially mutating scripts:
+- `TestStreams.fsx` (patches an account near the end)
+- `TestAccountUpdates.fsx`
+- `TestCreate*.fsx`
+- `api-spec-test.sh` (not recommended; can pollute server state)
+
 The CLI under `../tools` links against this project. When you evolve the domain
 surface or CSV helpers, remember that the CLI depends on those modules directly.
 
@@ -41,6 +53,7 @@ surface or CSV helpers, remember that the CLI depends on those modules directly.
 - `NOCFO_TOKEN` exported in your shell.
 - The base URL defaults to `https://api-tst.nocfo.io`, the test environment.
 - Optional: `NOCFO_BASE_URL` if you need to point at another cluster; it must be an absolute URI.
+- If a local `.env` exists, you may `source .env` before running commands here. That file is local-only and not committed to GitHub.
 
 Token management portals:
 - Test: <https://login-tst.nocfo.io/auth/tokens/>
@@ -54,10 +67,19 @@ dotnet build
 export NOCFO_TOKEN="paste-your-token"
 ```
 
+If you have a local `.env`, you can use this instead:
+
+```bash
+source .env
+cd hawaii-client
+dotnet build
+```
+
 After the build, the scripts can be run in place with `dotnet fsi <script.fsx>`. Highlights:
 
 - `TestStreams.fsx` – Streams the first few businesses, then accounts, using the `Domain.Streams` wrappers.
 - `TestBalance.fsx` – Computes a simple trial balance by hydrating accounts lazily and folding by `AccountClass`.
+   Requires setting Business slug into the source code. Fails without.
 - `TestClient.fsx` – Raw HTTP smoke test that bypasses the higher-level abstractions.
 - `RawHttpTest.fsx` / `STRPTest.fsx` – Repro harnesses from earlier debugging sessions; consult the comments before using.
 
@@ -125,24 +147,32 @@ Commit the updated schema before running Hawaii so the generated sources remain 
 
 We keep the generated code checked in so you can build immediately. Regenerate only when the upstream OpenAPI spec changes.
 
-1. In `vendor/Hawaii/src`, build your own Hawaii version:
+1. From the repo root, build the local Hawaii fork:
    ```bash
-   cd vendor/Hawaii/src
-   TBD
+   dotnet build vendor/Hawaii/src/Hawaii.fsproj -c Release
    ```
 
 Our forked generator in `vendor/Hawaii` includes fixes for nullable fields,
 enum parsing, and operation name normalization that we relied on during November 2025.
 If you use an upstream Hawaii, cross-check that those fixes have landed.
 
-2. Run the resulting Hawaii CLI against `hawaii-client/nocfo-api-hawaii.json`.
-   For example, under macOS run the following:
+2. Still from the repo root, run the resulting Hawaii CLI against `hawaii-client/nocfo-api-hawaii.json`:
    ```bash
-   vendor/Hawaii/src/bin/Release/net6.0/osx-arm64/publish/Hawaii \
-      --config hawaii-client/nocfo-api-hawaii.json
+   dotnet ./vendor/Hawaii/src/bin/Release/net6.0/Hawaii.dll \
+      --config ./hawaii-client/nocfo-api-hawaii.json \
+      --no-logo
    ```
 
-2. Rebuild this project (`dotnet build`) to ensure the regenerated DLL still works with the domain layer.
+   The current config assumes you run this command from the repo root: `schema` is resolved from the working directory, while `output` is resolved relative to the config file.
+
+3. Rebuild this project (`(cd hawaii-client && dotnet build)`) to ensure the regenerated DLL still works with the domain layer.
+
+4. Rebuild the CLI as well:
+   ```bash
+   dotnet build tools
+   ```
+
+**Operational note:** the local Hawaii fork still targets `net6.0`, so modern .NET SDKs emit support warnings during build. That warning is expected for now.
 
 **Known generator workaround:**
 `hawaii-client/nocfo-api-hawaii.json` overrides `AttachmentInstance.analysis_results` to a dummy nullable string.

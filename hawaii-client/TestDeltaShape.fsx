@@ -6,5 +6,6 @@
 open Nocfo
 open NocfoApi.Types
 
-let descriptors = DeltaShape<Account, PatchedAccount>.Descriptors
-printfn "DeltaShape<Account,PatchedAccount> initialised with %d fields." descriptors.Length
+let emptyPatch = PatchedAccountRequest.Create()
+let hasChanges = PatchShape<Account, PatchedAccountRequest>.HasChanges emptyPatch
+printfn "PatchShape<Account,PatchedAccountRequest> initialised; empty patch has changes = %b" hasChanges

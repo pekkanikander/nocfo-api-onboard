@@ -9,7 +9,9 @@ open CsvHelper
 open CsvHelper.Configuration
 open FSharp.Control
 open Microsoft.FSharp.Reflection
+open Newtonsoft.Json
 open Nocfo.Tools.Arguments.CvsMapping
+open NocfoApi.Http
 
 // Depends on your existing helpers:
 open Nocfo.CsvHelpers                 // registerFSharpConvertersFor
@@ -59,6 +61,63 @@ module private HeaderValidation =
         if not missing.IsEmpty then
           failwithf "CSV is missing required column(s) for %s: %s"
             typeof<'T>.FullName
+            (String.Join(", ", missing))
+
+  /// Validate a flattened delta CSV where `id` is a top-level column and the
+  /// remaining columns map directly to properties on the patch record type.
+  let validateDeltaHeader<'TPatch> (header: string[]) (fields: string list option) : unit =
+    let headerNames =
+      header
+      |> Array.map (fun s -> s.Trim().ToLowerInvariant())
+      |> Set.ofArray
+
+    let patchPropNames =
+      typeof<'TPatch>.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+      |> Array.map (fun p -> p.Name.ToLowerInvariant())
+      |> Set.ofArray
+
+    let requested =
+      fields
+      |> Option.defaultValue []
+      |> normalizeFields
+      |> List.map (fun s -> s.ToLowerInvariant())
+
+    let unknownRequested =
+      requested
+      |> List.filter (fun name -> name <> "id" && not (patchPropNames.Contains name))
+      |> List.distinct
+
+    if not unknownRequested.IsEmpty then
+      failwithf "Unknown field(s) for %s: %s"
+        typeof<'TPatch>.FullName
+        (String.Join(", ", unknownRequested))
+
+    match requested with
+    | [] ->
+        if not (headerNames.Contains "id") then
+          failwithf "CSV is missing required column(s) for %s: id" typeof<'TPatch>.FullName
+
+        let unknown =
+          headerNames
+          |> Set.filter (fun name -> name <> "id" && not (patchPropNames.Contains name))
+          |> Set.toList
+
+        if not unknown.IsEmpty then
+          failwithf "Unknown column(s) for %s: %s"
+            typeof<'TPatch>.FullName
+            (String.Join(", ", unknown))
+
+    | wanted ->
+        let required =
+          if wanted |> List.contains "id" then wanted else "id" :: wanted
+
+        let missing =
+          required
+          |> List.filter (fun name -> not (headerNames.Contains name))
+
+        if not missing.IsEmpty then
+          failwithf "CSV is missing required column(s) for %s: %s"
+            typeof<'TPatch>.FullName
             (String.Join(", ", missing))
 
 
@@ -205,41 +264,55 @@ module Csv =
     else
       false
 
-  let private setCollectionFieldValue (csv: CsvReader) (fi: PropertyInfo) (ft: Type) (colIndex: int) =
-    // For now we support only collections of string, split by ';' and trimmed.
+  let private isCollectionType (t: Type) =
+    if t.IsArray then
+      true
+    elif t.IsGenericType then
+      let def = t.GetGenericTypeDefinition()
+      def = typedefof<list<_>>
+      || def = typedefof<System.Collections.Generic.List<_>>
+      || def = typedefof<seq<_>>
+      || def = typedefof<System.Collections.Generic.IEnumerable<_>>
+      || def = typedefof<System.Collections.Generic.IReadOnlyList<_>>
+      || def = typedefof<System.Collections.Generic.IList<_>>
+    else
+      false
+
+  let private deserializeJsonValue (rawText: string) (t: Type) =
+    JsonConvert.DeserializeObject(rawText, t, Serializer.settings)
+
+  let private setCollectionFieldValue (csv: CsvReader) (fieldName: string) (ft: Type) (colIndex: int) =
     let rawText = csv.GetField(colIndex)
     if String.IsNullOrWhiteSpace rawText then
       None
     else
-      let elemType =
-        if ft.IsArray then ft.GetElementType()
-        elif ft.IsGenericType then ft.GetGenericArguments().[0]
-        else typeof<string>
-
-      if elemType <> typeof<string> then
-        failwithf "CSV collection field '%s' currently supports only string element types, but got '%s'." fi.Name elemType.FullName
-
-      let parts =
-        rawText.Split(';')
-        |> Array.map (fun s -> s.Trim())
-        |> Array.filter (fun s -> s <> "")
+      let rawTrimmed = rawText.Trim()
 
       let valueObj : obj =
-        if ft.IsArray then
-          parts :> obj
-        elif ft.IsGenericType && ft.GetGenericTypeDefinition() = typedefof<list<_>> then
-          // Build an F# list<string> from the array.
-          let listType = typedefof<list<_>>.MakeGenericType(elemType)
-          let cases = FSharpType.GetUnionCases(listType, true)
-          let emptyCase = cases |> Array.find (fun c -> c.Name = "Empty")
-          let consCase  = cases |> Array.find (fun c -> c.Name = "Cons")
-          let mutable listObj = FSharpValue.MakeUnion(emptyCase, [||], true)
-          for idx = parts.Length - 1 downto 0 do
-            listObj <- FSharpValue.MakeUnion(consCase, [| parts.[idx] :> obj; listObj |], true)
-          listObj
+        if isStringCollectionType ft && not (rawTrimmed.StartsWith("[") || rawTrimmed.StartsWith("{")) then
+          let parts =
+            rawText.Split(';')
+            |> Array.map (fun s -> s.Trim())
+            |> Array.filter (fun s -> s <> "")
+
+          if ft.IsArray then
+            parts :> obj
+          elif ft.IsGenericType && ft.GetGenericTypeDefinition() = typedefof<list<_>> then
+            // Build an F# list<string> from the array.
+            let listType = typedefof<list<_>>.MakeGenericType(typeof<string>)
+            let cases = FSharpType.GetUnionCases(listType, true)
+            let emptyCase = cases |> Array.find (fun c -> c.Name = "Empty")
+            let consCase  = cases |> Array.find (fun c -> c.Name = "Cons")
+            let mutable listObj = FSharpValue.MakeUnion(emptyCase, [||], true)
+            for idx = parts.Length - 1 downto 0 do
+              listObj <- FSharpValue.MakeUnion(consCase, [| parts.[idx] :> obj; listObj |], true)
+            listObj
+          else
+            parts :> obj
+        elif isCollectionType ft then
+          deserializeJsonValue rawText ft
         else
-          // Fallback: keep as string[], which is assignable to IEnumerable<string> etc.
-          parts :> obj
+          failwithf "CSV collection field '%s' has unsupported type '%s'." fieldName ft.FullName
 
       Some valueObj
 
@@ -268,7 +341,11 @@ module Csv =
             (JValue(rawText) :> JToken :> obj)
         elif isStringCollectionType innerType then
           // option<collection<string>>: parse as a single-cell collection of strings.
-          match setCollectionFieldValue csv null innerType colIndex with
+          match setCollectionFieldValue csv "(collection)" innerType colIndex with
+          | Some v -> v
+          | None -> null
+        elif isCollectionType innerType then
+          match setCollectionFieldValue csv "(collection)" innerType colIndex with
           | Some v -> v
           | None -> null
         else
@@ -295,7 +372,11 @@ module Csv =
           | Some optValue -> values.[i] <- optValue
           | None -> () // keep default (None)
         elif isStringCollectionType ft then
-          match setCollectionFieldValue csv fi ft colIndex with
+          match setCollectionFieldValue csv fi.Name ft colIndex with
+          | Some collValue -> values.[i] <- collValue
+          | None -> () // keep default (null or existing collection)
+        elif isCollectionType ft then
+          match setCollectionFieldValue csv fi.Name ft colIndex with
           | Some collValue -> values.[i] <- collValue
           | None -> () // keep default (null or existing collection)
         else
@@ -345,3 +426,54 @@ module Csv =
       finally
         dispose()
     }
+
+  let readDeltasCore<'TPatch, 'TDelta>
+      (mkDelta: int -> 'TPatch -> 'TDelta)
+      (tr: TextReader)
+      (fields: string list option)
+    : AsyncSeq<'TDelta> =
+
+    let csv = mkCsvReader tr defaultIOOptions
+
+    registerFSharpConvertersFor csv.Context typeof<'TPatch>
+
+    let mutable disposed = false
+    let dispose () =
+      if not disposed then
+        (csv :> IDisposable).Dispose()
+        disposed <- true
+
+    asyncSeq {
+      try
+        let patchType = typeof<'TPatch>
+
+        if csv.Read() then
+          csv.ReadHeader() |> ignore
+
+          HeaderValidation.validateDeltaHeader<'TPatch> csv.HeaderRecord fields
+
+          let idColumn =
+            tryFindColumnIndex "id" csv.HeaderRecord
+            |> Option.defaultWith (fun () -> failwithf "CSV is missing required column 'id' for %s." typeof<'TDelta>.FullName)
+
+          let patchFieldInfos, patchFieldColumns, patchDefaults =
+            collectRecordMetadata patchType csv.HeaderRecord
+
+          while csv.Read() do
+            let idValue = csv.GetField(typeof<int>, idColumn) :?> int
+            let patchValues = buildRecordFromCsv<'TPatch> csv patchFieldInfos patchFieldColumns patchDefaults
+            let patch = FSharpValue.MakeRecord(patchType, patchValues, true)
+            let delta = mkDelta idValue (patch :?> 'TPatch)
+            yield delta
+      finally
+        dispose()
+    }
+
+  let inline readDeltas< ^TDelta, ^TPatch
+      when ^TDelta : (static member Create : int * ^TPatch -> ^TDelta) >
+      (tr: TextReader) (fields: string list option)
+    : AsyncSeq< ^TDelta > =
+    readDeltasCore< ^TPatch, ^TDelta >
+      (fun id patch -> (^TDelta : (static member Create : int * ^TPatch -> ^TDelta) (id, patch)))
+      tr
+      fields

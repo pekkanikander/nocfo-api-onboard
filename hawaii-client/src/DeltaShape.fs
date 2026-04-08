@@ -1,12 +1,13 @@
 namespace Nocfo
 
 // See LESSONS-LEARNED-OPENAPI.md for the rationale and implementation details.
-// The implementation is based on the following principles:
-// - The Delta type is a projection of the Full type where fields are made optional.
+// The implementation normalizes generated patch records against full API records
+// using cached reflection so unchanged optional fields can be dropped.
 
 open System
 open System.Reflection
 open Microsoft.FSharp.Reflection
+open NocfoApi.Http
 
 type DeltaFieldDescriptor =
   { FieldName: string
@@ -14,7 +15,6 @@ type DeltaFieldDescriptor =
     FullField: PropertyInfo
     DeltaIsOption: bool
     FullIsOption: bool
-    BaseType: Type
     DeltaNone: obj option }
 
 module private DeltaShapeInternals =
@@ -33,12 +33,6 @@ module private DeltaShapeInternals =
     let noneCase = FSharpType.GetUnionCases optionType |> Array.head
     FSharpValue.MakeUnion(noneCase, [||])
 
-  let baseTypeOf (propertyType: Type) =
-    if isOptionType propertyType then
-      propertyType.GetGenericArguments().[0], true
-    else
-      propertyType, false
-
   let requireProperty (owner: Type) (name: string) : PropertyInfo =
     match owner.GetProperty(name) with
     | null -> failwithf "%s is missing property '%s'" owner.FullName name
@@ -46,39 +40,36 @@ module private DeltaShapeInternals =
 
 open DeltaShapeInternals
 
-type DeltaShape<'Full,'Delta> private () =
+type PatchShape<'Full,'Patch> private () =
   static let descriptors =
     ensureRecord "Full" typeof<'Full>
-    ensureRecord "Delta" typeof<'Delta>
+    ensureRecord "Patch" typeof<'Patch>
 
-    let buildDescriptor (field: PropertyInfo) =
-      let fullProp = requireProperty typeof<'Full> field.Name
-      let deltaBase, deltaIsOption = baseTypeOf field.PropertyType
-      let fullBase, fullIsOption = baseTypeOf fullProp.PropertyType
+    FSharpType.GetRecordFields(typeof<'Patch>, true)
+    |> Array.map (fun field ->
+        let fullProp = requireProperty typeof<'Full> field.Name
+        let patchIsOption = isOptionType field.PropertyType
+        let fullIsOption = isOptionType fullProp.PropertyType
 
-      if deltaBase <> fullBase then
-        failwithf "Field '%s' has incompatible types between %s and %s."
-                   field.Name typeof<'Delta>.FullName typeof<'Full>.FullName
+        { FieldName = field.Name
+          DeltaField = field
+          FullField = fullProp
+          DeltaIsOption = patchIsOption
+          FullIsOption = fullIsOption
+          DeltaNone = if patchIsOption then Some (makeNoneValue field.PropertyType) else None })
 
-      { FieldName = field.Name
-        DeltaField = field
-        FullField = fullProp
-        DeltaIsOption = deltaIsOption
-        FullIsOption = fullIsOption
-        BaseType = deltaBase
-        DeltaNone = if deltaIsOption then Some (makeNoneValue field.PropertyType) else None }
+  static let patchCtor =
+    FSharpValue.PreComputeRecordConstructor(typeof<'Patch>)
 
-    FSharpType.GetRecordFields(typeof<'Delta>)
-    |> Array.map buildDescriptor
+  static let equivalent (left: obj) (right: obj) =
+    match left, right with
+    | null, null -> true
+    | null, _ | _, null -> false
+    | _ -> Serializer.serialize left = Serializer.serialize right
 
-  static let deltaCtor =
-    FSharpValue.PreComputeRecordConstructor(typeof<'Delta>)
-
-  static member Descriptors : DeltaFieldDescriptor[] = descriptors
-
-  static member Normalize(full: 'Full, delta: 'Delta) : 'Delta =
+  static member Normalize(full: 'Full, patch: 'Patch) : 'Patch =
     let normalizeField descriptor =
-      let original = descriptor.DeltaField.GetValue(delta)
+      let original = descriptor.DeltaField.GetValue(patch)
       if not descriptor.DeltaIsOption then
         original
       else
@@ -89,26 +80,26 @@ type DeltaShape<'Full,'Delta> private () =
             let matches =
               if descriptor.FullIsOption then
                 match tryOptionalValue descriptor.FullField.PropertyType fullValue with
-                | Some existing -> existing.Equals(desired)
+                | Some existing -> equivalent existing desired
                 | None -> false
               else
-                fullValue.Equals(desired)
+                equivalent fullValue desired
 
             if matches then
               descriptor.DeltaNone
-              |> Option.defaultWith (fun () -> failwithf "Descriptor for '%s' expected optional delta field." descriptor.FieldName)
+              |> Option.defaultWith (fun () -> failwithf "Descriptor for '%s' expected optional patch field." descriptor.FieldName)
             else
               original
 
     descriptors
     |> Array.map normalizeField
-    |> deltaCtor
-    :?> 'Delta
+    |> patchCtor
+    :?> 'Patch
 
-  static member HasChanges(delta: 'Delta) : bool =
+  static member HasChanges(patch: 'Patch) : bool =
     descriptors
     |> Array.exists (fun descriptor ->
         descriptor.DeltaIsOption &&
-          (descriptor.DeltaField.GetValue(delta)
+          (descriptor.DeltaField.GetValue(patch)
            |> tryOptionalValue descriptor.DeltaField.PropertyType
            |> Option.isSome))

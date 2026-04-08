@@ -43,15 +43,15 @@ module AsyncSeqHelpers =
 
 
     /// Paginates by invoking fetchPage starting from page=1, yielding items lazily while the page's `next` is Some.
-    /// Works for any page type that exposes `results : 'Item list` and `next : string option` members.
+    /// Works for any page type that exposes `results : 'Item list` and `next : option<int>` members.
     let inline paginateByPageSRTP< ^Page, 'Item
                                 when ^Page : (member results : 'Item list)
-                                 and ^Page : (member next    : string option) >
+                                 and ^Page : (member next    : Option<int>) >
         (fetchPage: int -> Async<Result< ^Page , HttpError>>)
         : AsyncSeq<Result<'Item, HttpError>> =
 
-        let inline resultsOf (p:^Page) : 'Item list   = (^Page : (member results : 'Item list) (p))
-        let inline nextOf    (p:^Page) : string option = (^Page : (member next    : string option) (p))
+        let inline resultsOf (p:^Page) : 'Item list  = (^Page : (member results : 'Item list) (p))
+        let inline nextOf    (p:^Page) : Option<int> = (^Page : (member next    : Option<int>) (p))
 
         let rec loop pageNumber =
             asyncSeq {

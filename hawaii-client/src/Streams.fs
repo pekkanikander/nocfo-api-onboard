@@ -71,7 +71,7 @@ module Streams =
 
     let inline streamPaginated< ^Page, 'Item
         when ^Page : (member results : 'Item list)
-         and ^Page : (member next    : string option) >
+         and ^Page : (member next    : Option<int>) >
         (http: HttpContext)
         (relativeForPage: int -> string)
         : AsyncSeq<Result<'Item, HttpError>> =

@@ -56,8 +56,8 @@ let testBusinesses () =
         else
             let page = Serializer.deserialize<PaginatedBusinessList> body
             printfn "\nCount: %d" page.count
-            printfn "Next: %s" (page.next |> Option.defaultValue "none")
-            printfn "Prev: %s" (page.prev |> Option.defaultValue "none")
+            printfn "Next: %s" (page.next |> Option.map string |> Option.defaultValue "none")
+            printfn "Prev: %s" (page.prev |> Option.map string |> Option.defaultValue "none")
 
             let results = safeList page.results
             printfn "Results on this page: %d" results.Length

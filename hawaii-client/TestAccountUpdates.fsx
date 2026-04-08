@@ -73,7 +73,9 @@ let csvDeltas =
         let id = Int32.Parse(parts[0])
         let number =
             if parts.Length > 1 then parts[1] else ""
-        let delta = { NocfoApi.Types.PatchedAccount.Create(id) with number = Some number }
+        let delta : AccountDelta =
+            { id = id
+              patch = { NocfoApi.Types.PatchedAccountRequest.Create() with number = Some number } }
         Ok delta)
     |> AsyncSeq.ofSeq
 
@@ -82,8 +84,8 @@ let modifiedDeltas =
     csvDeltas
     |> AsyncSeq.map (Result.map (fun delta ->
         if delta.id = firstAccountId then
-            let deltaNumber = defaultArg delta.number ""
-            { delta with number = Some $"{deltaNumber}-patched" }
+            let deltaNumber = defaultArg delta.patch.number ""
+            { delta with patch = { delta.patch with number = Some $"{deltaNumber}-patched" } }
         else
             delta))
 

@@ -28,27 +28,32 @@ The CLI in `tools/` is the easiest way to interact with the API. It streams
 entities, writes them as CSV, and can reconcile edited rows back to the server.
 
 1. **Prerequisites**
-   - .NET 9 SDK (`dotnet --version` ≥ 9.0)
+   - .NET 10 SDK (`dotnet --version` ≥ 10.0)
    - macOS or Linux shell (the code itself is cross-platform)
-  - `NOCFO_TARGET_TOKEN` (or fallback `NOCFO_TOKEN`) exported; optionally `NOCFO_TARGET_BASE_URL` (defaults to `https://api-tst.nocfo.io`)
-  - `NOCFO_SOURCE_TOKEN` only when running dual-environment commands like `map accounts`
+   - `NOCFO_TARGET_TOKEN` (or fallback `NOCFO_TOKEN`) exported; optionally `NOCFO_TARGET_BASE_URL` (defaults to `https://api-tst.nocfo.io`)
+   - `NOCFO_SOURCE_TOKEN` only when running dual-environment commands like `map accounts`
+   - If a local `.env` exists, you may `source .env` to populate tokens and aliases for your shell session.
+     The GitHub version of this repo does not include `.env`.
 
    ```bash
    export NOCFO_TOKEN="paste-your-token"
    ```
 
 2. **Build once** (from repo root):
+
    ```bash
-   dotnet build hawaii-client
+   dotnet build tools
    ```
 
 3. **List businesses**:
+
    ```bash
    dotnet run --project tools -- \
      list businesses --fields "id,name,slug" > businesses.csv
    ```
 
 4. **List accounts for a business** (rows ordered by `id`):
+
    ```bash
    dotnet run --project tools -- list accounts \
      -b <business-id> \
@@ -56,22 +61,23 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
    ```
 
 5. **List documents for a business**:
+
    ```bash
    dotnet run --project tools -- list documents \
      -b <business-id> \
      --fields "id,number,date,balance" > documents.csv
    ```
 
-6. **Update accounts** by editing the CSV (keep `id` and ordering) and piping it
-   back in:
+6. **Update accounts** by editing the CSV (keep `id` and ordering) and piping it back in:
+
    ```bash
    dotnet run --project tools -- update accounts \
      -b <business-id> \
      --fields "id,number,name" < accounts.csv
    ```
 
-7. **Update contacts** by editing exported contacts (keep `id` and ordering) and piping
-   them back in:
+7. **Update contacts** by editing exported contacts (keep `id` and ordering) and piping them back in:
+
    ```bash
    dotnet run --project tools -- update contacts \
      -b <business-id> \
@@ -79,19 +85,22 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
    ```
 
 8. **Delete accounts** by piping a CSV with the account `id`s you want to drop:
+
    ```bash
    dotnet run --project tools -- delete accounts \
      -b <business-id> < ids-to-delete.csv
    ```
 
 9. **Map account IDs between environments** (source -> target by account `number`):
+
    ```bash
-   NOCFO_SOURCE_TOKEN="paste-source-token" \
+   NOCFO_SOURCE_TOKEN="paste-source-token" NOCFO_TARGET_TOKEN="paste-target-token" \
    dotnet run --project tools -- map accounts \
      -b <business-id> > csv/account-id-map.csv
    ```
 
 10. **Create minimal documents in target**:
+
    ```bash
    dotnet run --project tools -- create documents \
      -b <target-business-id> \
@@ -103,8 +112,8 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
 
 - `--fields` controls both which columns are emitted and which columns are read back.
   `id` is always required when executing updates or deletes.
-- Output defaults to stdout and input defaults to stdin; `--out`/`--in` override
-  those streams without shell redirection.
+- Output defaults to stdout and input defaults to stdin;
+  `--out`/`--in` override those streams without shell redirection.
 - Currently implemented verbs: `list`, `update accounts`, `update contacts`, `delete accounts`,
   `delete contacts`, `delete documents`, `map accounts`, and minimal `create documents`.
 - Errors and HTTP traces go to stderr so you can keep piping stdout to files.
@@ -119,19 +128,25 @@ model or write new folds), the various test scripts under `hawaii-client/` may b
 
 1. **Prerequisites** – same as above.
 2. **Build**:
+
    ```bash
    cd hawaii-client
    dotnet build
    ```
+
 3. **Set your token**:
+
    ```bash
    export NOCFO_TOKEN="paste-your-token"
    ```
+
 4. **Run a script**:
+
    ```bash
    dotnet fsi TestBalance.fsx
    ```
-   The script streams accounts for a demo business, hydrates each account on demand,
+
+   By default, the script streams accounts for a demo business, hydrates each account on demand,
    and folds balances by class before printing a trial balance.
 
 Consult `hawaii-client/README.md` for a tour of the modules and guidance on
@@ -139,18 +154,44 @@ regeneration, extending AsyncSeq wrappers, or writing new reports.
 
 ## Regenerating the Hawaii Client
 
-In the future, we will keep the generator output checked in so you can compile immediately.
-At this point, before the first real release, you still need to generate the Hawaii-generated code yourself.
-You also need your own Hawaii build.
+The generated client under `hawaii-client/generated/` is checked in, so the repo builds without a regeneration step.
+Regenerate only when the NoCFO OpenAPI spec changes.
 
-In general, regeneration is only needed when the NoCFO OpenAPI spec changes.
+1. Refresh `api/openapi.json`.
 
-1. Update `api/openapi.json`.
-2. From the repo root, run Hawaii using the curated configuration:
    ```bash
-   hawaii --config hawaii-client/nocfo-api-hawaii.json
+   curl -L --fail --silent --show-error \
+     -H "Accept: application/vnd.oai.openapi+json;version=3.0" \
+     "https://api-tst.nocfo.io/openapi/" \
+     -o api/openapi.json
    ```
-3. Rebuild `hawaii-client/` to ensure the generated assembly still compiles.
+
+2. Build the local Hawaii fork:
+
+   ```bash
+   dotnet build vendor/Hawaii/src/Hawaii.fsproj -c Release
+   ```
+
+3. From the **repo root**, run the built Hawaii CLI against the curated config:
+
+   ```bash
+   dotnet ./vendor/Hawaii/src/bin/Release/net6.0/Hawaii.dll \
+     --config ./hawaii-client/nocfo-api-hawaii.json \
+     --no-logo
+   ```
+
+4. Rebuild the handwritten layers:
+
+   ```bash
+   dotnet build hawaii-client/hawaii-client.fsproj
+   dotnet build tools/tools.fsproj
+   ```
+
+Notes:
+
+- The current local Hawaii fork targets `net6.0`, so newer SDKs emit end-of-support warnings during build.
+- `hawaii-client/nocfo-api-hawaii.json` currently assumes you run Hawaii from the repo root:
+  `schema` is resolved from the current working directory, while `output` is resolved relative to the config file.
 
 For a more step-by-step build instructions, see `hawaii-client/README.md`.
 
@@ -176,7 +217,7 @@ For a more step-by-step build instructions, see `hawaii-client/README.md`.
 
 ## Status and Next Steps
 
-We consider this iteration “good enough to remember.”
+We consider this iteration “good enough to be somewhat useful for developers.”
 At this point, future improvements (if someone picks it up) would include:
 
 - Robust error decoding (HTTP + JSON), possibly with retry policies.

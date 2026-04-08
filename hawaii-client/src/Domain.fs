@@ -54,7 +54,7 @@ type BusinessFull = {
 
 /// Business is a hydratable of its full form, with BusinessKey as the partial
 type Business = Hydratable<BusinessFull, BusinessKey>
-type BusinessDelta = NocfoApi.Types.PatchedBusiness // XXX: Not implemented yet
+type BusinessDelta = NocfoApi.Types.PatchedBusinessRequest // XXX: Not implemented yet
 
 /// ------------------------------------------------------------
 /// Accounts
@@ -68,15 +68,20 @@ type AccountClassTotals = Map<AccountClass, decimal>
 /// but we don't model that relationship yet, as we don't need it yet.
 type AccountFull  = NocfoApi.Types.Account
 type AccountRow   = NocfoApi.Types.AccountList
-type AccountDelta = NocfoApi.Types.PatchedAccount
 
+[<CLIMutable>]
+type AccountDelta =
+  { id: int; patch: NocfoApi.Types.PatchedAccountRequest }
+  with
+    static member Create (id: int, patch: NocfoApi.Types.PatchedAccountRequest) =
+      { id = id; patch = patch }
 /// Account is a hydratable of its full form with AccountRow as the partial
 type Account  = Hydratable<AccountFull, AccountRow>
 
 /// Domain-level account commands expressing intent before hitting HTTP.
 type AccountCommand =
   | CreateAccount of Account
-  | UpdateAccount of accountId:int * AccountDelta
+  | UpdateAccount of AccountDelta
   | DeleteAccount of accountId:int
 
 /// Result of executing an account command.
@@ -116,11 +121,18 @@ type DocumentResult =
 
 type ContactFull  = NocfoApi.Types.Contact
 type ContactRow   = NocfoApi.Types.Contact
-type ContactDelta = NocfoApi.Types.PatchedContact
+
+[<CLIMutable>]
+type ContactDelta =
+  { id: int; patch: NocfoApi.Types.PatchedContactRequest }
+  with
+    static member Create (id: int, patch: NocfoApi.Types.PatchedContactRequest) =
+      { id = id; patch = patch }
+
 type Contact      = Hydratable<ContactFull, ContactRow>
 
 type ContactCommand =
-  | UpdateContact of contactId:int * ContactDelta
+  | UpdateContact of ContactDelta
   | DeleteContact of contactId:int
 
 type ContactResult =
@@ -183,27 +195,6 @@ module Alignment =
       | DomainStreamException err ->
           yield Error err
     }
-  // Old behaviour, preserver for now. TODO: remove.
-  let alignAccounts
-    (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
-    (deltas  : AsyncSeq<Result<AccountDelta, DomainError>>)
-    =
-
-    let onAligned account delta =
-      Ok (account, delta)
-
-    let onMissingLeft (missingAccount: AccountDelta) =
-      let key = missingAccount.id
-      Error (DomainError.Unexpected $"Alignment failure: missing CSV row for account id {key}.")
-
-    let onMissingRight (missingAccount: AccountFull) =
-      let key = missingAccount.id
-      Error (DomainError.Unexpected $"Alignment failure: missing account for CSV id {key}.")
-
-    alignEntries<AccountFull, AccountDelta, int, AccountFull * AccountDelta>
-      (fun account -> account.id)
-      (fun delta -> delta.id)
-      onAligned onMissingLeft onMissingRight accounts deltas
 
   // New behaviour, allow CSV file to have missing rows.
   let alignAccountsPermissive
@@ -286,7 +277,7 @@ module Business =
       | Result.Ok business ->
           let full : BusinessFull =
             { key  = context.key
-              meta = { name = business.name; country = Option.ofObj business.country };
+              meta = { name = business.name; country = Some business.country };
               raw  = business }
           return Ok (Business.Full full)
       | Result.Error httpErr ->
@@ -298,7 +289,7 @@ module Business =
       {
         // XXX fixme: what if there are no identifiers or no slug
         key  = { id = raw.identifiers.[0]; slug = defaultArg raw.slug "(none)" }
-        meta = { name = raw.name; country = Option.ofObj raw.country };
+        meta = { name = raw.name; country = Some raw.country };
         raw  = raw
       }
     Business.Full full
@@ -361,9 +352,9 @@ module Account =
     if id <> full.id then
       Error (DomainError.Unexpected $"Patched account id {id} does not match hydrated account id {full.id}.")
     else
-      let normalized = DeltaShape<AccountFull, AccountDelta>.Normalize(full, patched)
-      if DeltaShape<AccountFull, AccountDelta>.HasChanges normalized then
-        Ok (Some (AccountCommand.UpdateAccount (id, normalized)))
+      let normalized = PatchShape<AccountFull, PatchedAccountRequest>.Normalize(full, patched.patch)
+      if PatchShape<AccountFull, PatchedAccountRequest>.HasChanges normalized then
+        Ok (Some (AccountCommand.UpdateAccount { id = id; patch = normalized }))
       else
         Ok None
 
@@ -410,31 +401,26 @@ module Contact =
 
   let diffContact (full: ContactFull) (patched: ContactDelta) : Result<ContactCommand option, DomainError> =
     let id = patched.id
-    match id with
-    | None ->
-        Error (DomainError.Unexpected "Patched contact is missing required id.")
-    | Some contactId when contactId <> full.id ->
-        Error (DomainError.Unexpected $"Patched contact id {contactId} does not match hydrated contact id {full.id}.")
-    | Some contactId ->
-        let normalized = DeltaShape<ContactFull, ContactDelta>.Normalize(full, patched)
-        if DeltaShape<ContactFull, ContactDelta>.HasChanges normalized then
-          Ok (Some (ContactCommand.UpdateContact (contactId, normalized)))
-        else
-          Ok None
+    if id <> full.id then
+      Error (DomainError.Unexpected $"Patched contact id {id} does not match hydrated contact id {full.id}.")
+    else
+      let normalized = PatchShape<ContactFull, PatchedContactRequest>.Normalize(full, patched.patch)
+      if PatchShape<ContactFull, PatchedContactRequest>.HasChanges normalized then
+        Ok (Some (ContactCommand.UpdateContact { id = id; patch = normalized }))
+      else
+        Ok None
 
   let deltasToCommands
     (contacts: AsyncSeq<Result<ContactFull, DomainError>>)
     (deltas: AsyncSeq<Result<ContactDelta, DomainError>>)
     : AsyncSeq<Result<ContactCommand, DomainError>> =
 
-    Alignment.alignEntries<ContactFull, ContactDelta, Option<int>, Option<ContactFull * ContactDelta>>
-      (fun contact -> Some contact.id)
+    Alignment.alignEntries<ContactFull, ContactDelta, int, Option<ContactFull * ContactDelta>>
+      (fun contact -> contact.id)
       (fun delta -> delta.id)
       (fun contact delta -> Ok (Some (contact, delta)))
       (fun missingDelta ->
-        match missingDelta.id with
-        | Some key -> Error (DomainError.Unexpected $"Alignment failure: missing contact for CSV id {key}.")
-        | None -> Error (DomainError.Unexpected "Alignment failure: CSV row for contact update is missing id."))
+        Error (DomainError.Unexpected $"Alignment failure: missing contact for CSV id {missingDelta.id}."))
       (fun _missingContact -> Ok None)
       contacts
       deltas
@@ -520,17 +506,14 @@ module Streams =
     (commands: AsyncSeq<Result<AccountCommand, DomainError>>)
     : AsyncSeq<Result<AccountResult, DomainError>> =
 
-    let patchPath (delta: AccountDelta) =
-      Endpoints.accountById context.key.slug (string delta.id)
-
     let deletePath (accountId: int) =
       Endpoints.accountById context.key.slug (string accountId)
 
     let mapCommandToOperation (command: AccountCommand) =
       match command with
-      | AccountCommand.UpdateAccount (_, delta) ->
+      | AccountCommand.UpdateAccount delta ->
           (fun () ->
-                Http.patchJson<AccountDelta, AccountFull> context.ctx.http (patchPath delta) delta
+                Http.patchJson<NocfoApi.Types.PatchedAccountRequest, AccountFull> context.ctx.http (Endpoints.accountById context.key.slug (string delta.id)) delta.patch
                 |> AsyncResult.map AccountUpdated)
       | AccountCommand.DeleteAccount id ->
           (fun () ->
@@ -600,9 +583,9 @@ module Streams =
 
     let mapCommandToOperation (command: ContactCommand) =
       match command with
-      | ContactCommand.UpdateContact (id, delta) ->
+      | ContactCommand.UpdateContact delta ->
           (fun () ->
-                Http.patchJson<ContactDelta, ContactFull> context.ctx.http (patchPath id) delta
+                Http.patchJson<NocfoApi.Types.PatchedContactRequest, ContactFull> context.ctx.http (patchPath delta.id) delta.patch
                 |> AsyncResult.map ContactUpdated)
       | ContactCommand.DeleteContact id ->
           (fun () ->
@@ -627,18 +610,21 @@ module Streams =
 ///
 
 module BusinessResolver =
+  let private identifierTypeToken (value: string) =
+    Newtonsoft.Json.Linq.JToken.FromObject(value)
+
   /// Build candidate identifiers from a free-form CLI argument.
   /// We try both 'Y_tunnus' and 'Vat_code' identifiers.
   let private formIdentifierCandidates (input: string) : BusinessIdentifier list =
     let trimmed = input.Trim()
 
-    [ BusinessIdentifier.Create(0, BusinessIdentifierTypeEnum.Y_tunnus, trimmed)
-      BusinessIdentifier.Create(0, BusinessIdentifierTypeEnum.Vat_code, trimmed) ]
+    [ BusinessIdentifier.Create(0, identifierTypeToken "y_tunnus", trimmed)
+      BusinessIdentifier.Create(0, identifierTypeToken "vat_code", trimmed) ]
 
   let private identifiersOverlap (candidates: BusinessIdentifier list) (identifier: BusinessIdentifier) =
     candidates
     |> List.exists (fun candidate ->
-         candidate.``type`` = identifier.``type`` &&
+         String.Equals(candidate.``type``.ToString(), identifier.``type``.ToString(), StringComparison.OrdinalIgnoreCase) &&
          String.Equals(candidate.value, identifier.value, StringComparison.OrdinalIgnoreCase))
 
   let private businessMatches candidates (full: BusinessFull) =

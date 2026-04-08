@@ -5,9 +5,9 @@ type Page<'T> = { results: 'T list; next: string option }
 
 let inline paginateByPageSRTP (fetch: int -> Async< ^P >) : AsyncSeq<'T>
   when ^P : (member results : 'T list)
-   and ^P : (member next    : string option) =
+   and ^P : (member next    : 'Next option) =
   let inline resultsOf (p:^P) = (^P : (member results : 'T list) (p))
-  let inline nextOf    (p:^P) = (^P : (member next    : string option) (p))
+  let inline nextOf    (p:^P) = (^P : (member next    : 'Next option) (p))
   let rec loop i = asyncSeq {
     let! p = fetch i
     for x in resultsOf p do yield x

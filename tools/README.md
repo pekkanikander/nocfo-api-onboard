@@ -43,9 +43,11 @@ dotnet run --project tools -- create documents \
   < csv/documents-create.csv
 ```
 
+If a local `.env` exists, you may `source .env` first and skip the manual exports. That file is local-only and is not committed to GitHub.
+
 Requirements:
 
-- .NET 9 SDK
+- .NET 10 SDK
 - `NOCFO_TARGET_TOKEN` (preferred) or fallback `NOCFO_TOKEN` (required)
 - `NOCFO_TARGET_BASE_URL` (optional), fallback `NOCFO_BASE_URL`, default `https://api-tst.nocfo.io`
 - `NOCFO_SOURCE_TOKEN` (required for `map accounts`)
@@ -53,6 +55,21 @@ Requirements:
 - Build artifacts from `hawaii-client` (`dotnet build hawaii-client`)
 
 ## Command surface
+
+Read-only commands:
+- `list businesses`
+- `list accounts`
+- `list contacts`
+- `list documents`
+- `map accounts`
+
+Mutating commands:
+- `update accounts`
+- `update contacts`
+- `delete accounts`
+- `delete contacts`
+- `delete documents`
+- `create documents`
 
 | Command | Description | Notes |
 | --- | --- | --- |
@@ -106,7 +123,7 @@ The context wraps the shared `Http.createHttpContext` and `Accounting.ofHttp` fr
 - **CSV helpers** (`CsvHelper.fs`): bridges CsvHelper with F# records, ensuring the CLI and scripts share the same converters.
 - **Program flow** (`Program.fs`):
   - `list` commands: stream via `Streams.streamBusinesses`, `Streams.streamAccounts`, `Streams.streamContacts`, or `Streams.streamDocuments`, hydrate rows (`Streams.hydrateAndUnwrap`), write CSV lazily.
-  - `update` accounts/contacts: read CSV into `AsyncSeq<Result<PatchedAccount,_>>` / `AsyncSeq<Result<PatchedContact,_>>`, align with live API state using `Account.deltasToCommands` / `Contact.deltasToCommands`, execute sequentially, print per-entity status.
+  - `update` accounts/contacts: read CSV into repo-owned delta records (`AccountDelta` / `ContactDelta`) that keep `id` in-band for CSV alignment, normalize them against live API state, then convert them into generated `*Request` PATCH payloads.
   - `delete` accounts: map CSV rows to `AccountCommand.DeleteAccount` and reuse the same execution + folding machinery.
   - `map accounts`: align source/target account streams by `number` and output `source_id,target_id,number`.
   - `create documents`: read minimal create payload rows, optionally rewrite blueprint account IDs, then POST documents sequentially.

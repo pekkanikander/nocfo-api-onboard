@@ -6,7 +6,6 @@
 
 open System
 open FSharp.Control
-open Newtonsoft.Json.Linq
 open Nocfo.Domain
 
 let private mkAccount (id: int) (number: string) =
@@ -16,16 +15,18 @@ let private mkAccount (id: int) (number: string) =
         updated_at = DateTimeOffset.UnixEpoch,
         number = number,
         padded_number = id,
-        name = JObject.Parse("""{"fi":"x"}"""),
-        name_translations = JObject.Parse("""{"fi":"x"}"""),
+        name = "x",
+        name_translations = [ NocfoApi.Types.Nametranslations.Create("fi", "x") ],
         header_path = [],
         default_vat_rate = 0.0,
+        is_shown = true,
         balance = 0.0f,
         is_used = true
     )
 
-let private mkDelta (id: int) =
-    NocfoApi.Types.PatchedAccount.Create(id)
+let private mkDelta (id: int) : AccountDelta =
+    { id = id
+      patch = NocfoApi.Types.PatchedAccountRequest.Create() }
 
 let private accountStream ids =
     ids
@@ -37,7 +38,7 @@ let private deltaStream ids =
     |> Seq.map (fun id -> Ok (mkDelta id))
     |> AsyncSeq.ofSeq
 
-let private normalizeResult (result: Result<Option<NocfoApi.Types.Account * NocfoApi.Types.PatchedAccount>, DomainError>) =
+let private normalizeResult (result: Result<Option<NocfoApi.Types.Account * AccountDelta>, DomainError>) =
     match result with
     | Ok (Some (account, delta)) -> $"ok-some:{account.id}:{delta.id}"
     | Ok None -> "ok-none"

@@ -111,8 +111,8 @@ In general, the LLM assistant needs to be vigilent about such details, as the le
   - Some integer fields can be `null` at runtime even if marked required; with the Hawaii fix above, `nullable: true` now generates `Option<int>` as expected. The extra `size` field in responses is ignored safely by the deserializer.
 - **Operational notes (Hawaii)**:
   - Location: `vendor/Hawaii` (as a git submodule)
-  - Build (for macOS): `dotnet publish ./src/Hawaii.fsproj -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true`
-  - Run: `<repo>/vendor/Hawaii/src/bin/Release/net6.0/osx-arm64/publish/Hawaii --config ./nocfo-api-hawaii.json`
+  - Build: `dotnet build vendor/Hawaii/src/Hawaii.fsproj -c Release`
+  - Run from the repo root: `dotnet ./vendor/Hawaii/src/bin/Release/net6.0/Hawaii.dll --config ./hawaii-client/nocfo-api-hawaii.json --no-logo`
   - With the fixes in place, we no longer needed any preprocessing step; config `overrideSchema` handled API deviations.
 - **API integration notes**:
   - Auth header is `Authorization: Token <token>` (not Bearer). Raw `HttpClient` tests were invaluable to confirm headers and payloads. The LLM didn't notice this first.
@@ -128,10 +128,30 @@ In general, the LLM assistant needs to be vigilent about such details, as the le
   - Implement account listing + balance computation.
   - Consider upstream PRs to Hawaii (nullable fix, operationId normalization, tolerant enum converter).
 
+## Hawaii + NOCFO API (Apr 2026) — Update Notes
+
+- **Spec growth was substantial**: the test-environment OpenAPI document grew from 36 paths / 93 schemas to 73 paths / 159 schemas. Most of the new surface area is bookkeeping constants, reports, period endpoints, purchase invoices, and request-specific DTOs.
+- **Generated request DTO naming changed**: update/create payloads now come through Hawaii as `*Request` records (`PatchedAccountRequest`, `PatchedContactRequest`, `BusinessRequest`, etc.) instead of reusing the response models or older `Patched*` names.
+- **PATCH payloads no longer include `id`**: the API now expects the resource id only in the URL path. Our CLI and CSV alignment logic depended on `id` being inside the delta record, so we introduced small repo-owned `AccountDelta` / `ContactDelta` records for CSV import and alignment, then convert those into generated `*Request` payloads right before HTTP PATCH.
+- **Business identifiers are looser in the generated model**: `BusinessIdentifier.type` is now generated as `JToken` instead of a closed enum. Matching logic must compare token text rather than rely on DU equality.
+- **Pagination shape changed again**: paginated `next` / `prev` values are now page numbers (`int option`) instead of URIs. Our AsyncSeq pagination helpers had to be generalized to work with `option<_>` rather than `string option`.
+- **Live validation result on April 7, 2026**:
+  - Raw `HttpClient` smoke test against `https://api-tst.nocfo.io` succeeded with `Authorization: Token <token>`.
+  - `tools list businesses` succeeded.
+  - `tools list accounts -b 2999322-9` succeeded.
+  - `tools list contacts -b 2999322-9` and `tools list documents -b 2999322-9` also succeeded and currently returned empty result sets for that business.
+- **Documentation gotchas we hit during the update**:
+  - The repo now targets .NET 10 in the handwritten projects, but some docs still said .NET 9.
+  - `hawaii-client/generated/` is committed, but some docs still implied it was not.
+  - `hawaii-client/nocfo-api-hawaii.json` assumes Hawaii is run from the repo root.
+  - A local `.env` may exist for convenience, but it is not committed to GitHub and must not be treated as part of the public repo contract.
+  - The local Hawaii fork still targets `net6.0`, so current SDKs emit end-of-support warnings during build.
+
   ## Progress history ##
 
 * August 28, 2025: First version of this document created, with minimal testing of TypeScript, PureScript and F# tested
 * November 4, 2025: Second version of this document, with partial success using F# and Hawaii
+* April 7, 2026: Refreshed the test-environment OpenAPI schema, regenerated the Hawaii client, adapted the handwritten F# layers to `*Request` payloads and integer pagination, revalidated live flows, and repaired the main docs
 
 ---
 
