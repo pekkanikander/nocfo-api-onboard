@@ -364,4 +364,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 # Hawaii generated
-hawaii-client/generated
+hawaii-client/generated/obj
