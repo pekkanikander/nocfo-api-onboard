@@ -52,7 +52,7 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      list businesses --fields "id,name,slug" > businesses.csv
    ```
 
-4. **List accounts for a business** (rows ordered by `id`):
+4. **List accounts for a business**:
 
    ```bash
    dotnet run --project tools -- list accounts \
@@ -68,7 +68,7 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      --fields "id,number,date,balance" > documents.csv
    ```
 
-6. **Update accounts** by editing the CSV (keep `id` and ordering) and piping it back in:
+6. **Update accounts** by editing the CSV (keep `id`) and piping it back in:
 
    ```bash
    dotnet run --project tools -- update accounts \
@@ -76,7 +76,7 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
      --fields "id,number,name" < accounts.csv
    ```
 
-7. **Update contacts** by editing exported contacts (keep `id` and ordering) and piping them back in:
+7. **Update contacts** by editing exported contacts (keep `id`) and piping them back in:
 
    ```bash
    dotnet run --project tools -- update contacts \

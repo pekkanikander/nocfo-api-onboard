@@ -92,7 +92,7 @@ Some legacy scripts (`TestAsyncSeq.fsx`, etc.) capture older experiments and may
 - `AsyncSeqHelpers.paginateByPageSRTP` expresses “fetch page → yield results → follow `next`” as an `AsyncSeq<Result<'a,_>>`, preserving ordering and letting callers apply back-pressure.
 - `Streams.streamBusinesses` / `streamAccounts` wrap generated DTOs in domain types, ensuring we always carry hydration hooks inside `Hydratable`.
 - `Domain.Hydratable` plus `Streams.hydrateAndUnwrap` give consumers (CLI + scripts) the choice between lazy partials and eagerly hydrated entities.
-- `Account.deltasToCommands` aligns CSV edits against live API state (rows ordered by `id`) and emits `AccountCommand`s
+- `Account.executeDeltaUpdates` and `Contact.executeDeltaUpdates` drive update flows by fetching the current entity for each CSV `id`, diffing, and PATCHing in CSV order
 - `Streams.executeAccountCommands` interprets commands and converts them into HTTP API calls.
 - `Reports.addToTotals` shows how to write deterministic folds on top of the streaming surface; treat it as a template for new reporting modules.
 
@@ -105,7 +105,8 @@ Use `Domain-design.md` for the higher-level rationale before touching alignment 
 - `Nocfo.Tools.Runtime` builds on `Http.createHttpContext` + `Accounting.ofHttp`.
 - `BusinessResolver.resolve` (from `Domain.fs`) is how the CLI maps free-form IDs to a `BusinessContext`.
 - `Streams.streamBusinesses` / `streamAccounts` plus `hydrateAndUnwrap` provide the listing flows.
-- `Account.deltasToCommands` + `Streams.executeAccountCommands` implement `update`/`delete`.
+- `Account.executeDeltaUpdates` / `Contact.executeDeltaUpdates` implement per-row `update`
+- `Streams.executeAccountCommands` implements account deletes.
 - `Nocfo.CsvHelpers` defines the CsvHelper converters that keep our CSV exports/imports deterministic.
 
 If you add or rename domain types, plan to update both this README and `tools/README.md` so users understand which commands are affected.
@@ -207,4 +208,5 @@ The script produces a short Markdown summary alongside the raw JUnit/HAR artifac
 - Factor `StreamAlignment` into its own package (or upstream to Hawaii) to reduce duplication.
 - Upstream the Hawaii generator patch set instead of pinning to the local fork.
 
-Until then, treat this folder as a living notebook of the first workable Hawaii-based NoCFO client. Lift ideas, refactor freely, and keep the scripts runnable so future explorers can reproduce the flows quickly.
+Until then, treat this folder as a living notebook of the first workable Hawaii-based NoCFO client.
+Lift ideas, refactor freely, and keep the scripts runnable so future explorers can reproduce the flows quickly.

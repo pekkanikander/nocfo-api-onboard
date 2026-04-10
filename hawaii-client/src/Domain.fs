@@ -1,6 +1,7 @@
 namespace Nocfo.Domain
 
 open System
+open System.Net
 open FSharp.Control
 open Nocfo
 open NocfoApi.Types
@@ -219,6 +220,38 @@ module Alignment =
       (fun delta -> delta.id)
       onAligned onMissingLeft onMissingRight accounts deltas
 
+module DeltaUpdate =
+
+  let execute<'Delta, 'Full, 'Patch, 'Result>
+    (getId: 'Delta -> int)
+    (fetchCurrent: int -> Async<Result<'Full, DomainError>>)
+    (diffToPatch: 'Full -> 'Delta -> Result<'Patch option, DomainError>)
+    (applyPatch: int -> 'Patch -> Async<Result<'Result, DomainError>>)
+    (deltas: AsyncSeq<Result<'Delta, DomainError>>)
+    : AsyncSeq<Result<'Result, DomainError>> =
+
+    asyncSeq {
+      for deltaResult in deltas do
+        match deltaResult with
+        | Error err ->
+            yield Error err
+        | Ok delta ->
+            let id = getId delta
+            let! currentResult = fetchCurrent id
+            match currentResult with
+            | Error err ->
+                yield Error err
+            | Ok current ->
+                match diffToPatch current delta with
+                | Error err ->
+                    yield Error err
+                | Ok None ->
+                    ()
+                | Ok (Some patch) ->
+                    let! patchResult = applyPatch id patch
+                    yield patchResult
+    }
+
 
 /// ------------------------------------------------------------
 /// Contexts
@@ -304,6 +337,9 @@ module Business =
 ///
 
 module Account =
+  let private missingAccountError (id: int) =
+    DomainError.Unexpected $"Alignment failure: missing account for CSV id {id}."
+
   let mkFetch (context: BusinessContext) (id) : unit -> Async<Result<Account, DomainError>> =
     fun () ->
       async {
@@ -311,6 +347,19 @@ module Account =
           Http.getJson<AccountFull> context.ctx.http (Endpoints.accountById context.key.slug id)
         return (Result.map (Account.Full) >> DomainError.asDomain) result
       }
+
+  let fetchFull (context: BusinessContext) (id: int) : Async<Result<AccountFull, DomainError>> =
+    async {
+      let! result =
+        Http.getJson<AccountFull> context.ctx.http (Endpoints.accountById context.key.slug (string id))
+      match result with
+      | Ok account ->
+          return Ok account
+      | Error err when err.statusCode = HttpStatusCode.NotFound ->
+          return Error (missingAccountError id)
+      | Error err ->
+          return Error (DomainError.Http err)
+    }
 
   let ofRow (context: BusinessContext) (row: AccountRow) : Account =
     Hydratable.Partial (row, fetch = mkFetch context (row.id.ToString()))
@@ -358,6 +407,17 @@ module Account =
       else
         Ok None
 
+  let diffToPatch (full: AccountFull) (patched: AccountDelta) : Result<PatchedAccountRequest option, DomainError> =
+    let id = patched.id
+    if id <> full.id then
+      Error (DomainError.Unexpected $"Patched account id {id} does not match hydrated account id {full.id}.")
+    else
+      let normalized = PatchShape<AccountFull, PatchedAccountRequest>.Normalize(full, patched.patch)
+      if PatchShape<AccountFull, PatchedAccountRequest>.HasChanges normalized then
+        Ok (Some normalized)
+      else
+        Ok None
+
   let deltasToCommands
     (accounts: AsyncSeq<Result<AccountFull, DomainError>>)
     (deltas: AsyncSeq<Result<AccountDelta, DomainError>>)
@@ -372,6 +432,23 @@ module Account =
             | Ok (Some command) -> AsyncSeq.singleton (Ok command)
             | Ok None -> AsyncSeq.empty // No changes -> no command.
             | Error err -> AsyncSeq.singleton (Error err))
+
+  let executeDeltaUpdates
+    (context: BusinessContext)
+    (deltas: AsyncSeq<Result<AccountDelta, DomainError>>)
+    : AsyncSeq<Result<AccountResult, DomainError>> =
+
+    let applyPatch id patch =
+      Http.patchJson<PatchedAccountRequest, AccountFull> context.ctx.http (Endpoints.accountById context.key.slug (string id)) patch
+      |> AsyncResult.mapError DomainError.Http
+      |> AsyncResult.map AccountUpdated
+
+    DeltaUpdate.execute
+      (fun (delta: AccountDelta) -> delta.id)
+      (fetchFull context)
+      diffToPatch
+      applyPatch
+      deltas
 
 ///
 /// Document module operations
@@ -391,6 +468,9 @@ module Document =
 ///
 
 module Contact =
+  let private missingContactError (id: int) =
+    DomainError.Unexpected $"Alignment failure: missing contact for CSV id {id}."
+
   let ofRaw (raw: ContactFull) : Contact =
     Hydratable.Full raw
 
@@ -398,6 +478,19 @@ module Contact =
     match contact with
     | Full _ -> async.Return (Ok contact)
     | Partial (_row, fetch) -> fetch ()
+
+  let fetchFull (context: BusinessContext) (id: int) : Async<Result<ContactFull, DomainError>> =
+    async {
+      let! result =
+        Http.getJson<ContactFull> context.ctx.http (Endpoints.contactById context.key.slug (string id))
+      match result with
+      | Ok contact ->
+          return Ok contact
+      | Error err when err.statusCode = HttpStatusCode.NotFound ->
+          return Error (missingContactError id)
+      | Error err ->
+          return Error (DomainError.Http err)
+    }
 
   let diffContact (full: ContactFull) (patched: ContactDelta) : Result<ContactCommand option, DomainError> =
     let id = patched.id
@@ -407,6 +500,17 @@ module Contact =
       let normalized = PatchShape<ContactFull, PatchedContactRequest>.Normalize(full, patched.patch)
       if PatchShape<ContactFull, PatchedContactRequest>.HasChanges normalized then
         Ok (Some (ContactCommand.UpdateContact { id = id; patch = normalized }))
+      else
+        Ok None
+
+  let diffToPatch (full: ContactFull) (patched: ContactDelta) : Result<PatchedContactRequest option, DomainError> =
+    let id = patched.id
+    if id <> full.id then
+      Error (DomainError.Unexpected $"Patched contact id {id} does not match hydrated contact id {full.id}.")
+    else
+      let normalized = PatchShape<ContactFull, PatchedContactRequest>.Normalize(full, patched.patch)
+      if PatchShape<ContactFull, PatchedContactRequest>.HasChanges normalized then
+        Ok (Some normalized)
       else
         Ok None
 
@@ -432,6 +536,23 @@ module Contact =
             | Ok (Some command) -> AsyncSeq.singleton (Ok command)
             | Ok None -> AsyncSeq.empty // No changes -> no command.
             | Error err -> AsyncSeq.singleton (Error err))
+
+  let executeDeltaUpdates
+    (context: BusinessContext)
+    (deltas: AsyncSeq<Result<ContactDelta, DomainError>>)
+    : AsyncSeq<Result<ContactResult, DomainError>> =
+
+    let applyPatch id patch =
+      Http.patchJson<PatchedContactRequest, ContactFull> context.ctx.http (Endpoints.contactById context.key.slug (string id)) patch
+      |> AsyncResult.mapError DomainError.Http
+      |> AsyncResult.map ContactUpdated
+
+    DeltaUpdate.execute
+      (fun (delta: ContactDelta) -> delta.id)
+      (fetchFull context)
+      diffToPatch
+      applyPatch
+      deltas
 
 ///
 /// Streams module operations —— maybe to be folded to the previous modules

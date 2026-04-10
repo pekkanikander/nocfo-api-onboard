@@ -190,15 +190,8 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
             let csvStream =
                 Nocfo.Csv.readDeltas<AccountDelta, NocfoApi.Types.PatchedAccountRequest> input (Some fields)
                 |> AsyncSeq.map Ok
-            // The current state of accounts from the API.
-            let accountStream =
-                Streams.streamAccounts ctx
-                |> Streams.hydrateAndUnwrap
-            // Compute the deltas between the desired and current state.
-            // Convert the deltas to commands. Execute the commands. Return the exit code.
             return!
-                Account.deltasToCommands accountStream csvStream
-                |> Streams.executeAccountCommands ctx
+                Account.executeDeltaUpdates ctx csvStream
                 |> foldAccountCommandResults
         | Error error ->
             eprintfn "Failed to get business context: %A" error
@@ -215,15 +208,8 @@ let updateContacts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
             let csvStream =
                 Nocfo.Csv.readDeltas<ContactDelta, NocfoApi.Types.PatchedContactRequest> input (Some fields)
                 |> AsyncSeq.map Ok
-            // The current state of contacts from the API.
-            let contactStream =
-                Streams.streamContacts ctx
-                |> Streams.hydrateAndUnwrap
-            // Compute the deltas between the desired and current state.
-            // Convert the deltas to commands. Execute the commands. Return the exit code.
             return!
-                Contact.deltasToCommands contactStream csvStream
-                |> Streams.executeContactCommands ctx
+                Contact.executeDeltaUpdates ctx csvStream
                 |> foldContactCommandResults
         | Error error ->
             eprintfn "Failed to get business context: %A" error

@@ -24,11 +24,11 @@ dotnet run --project tools -- list contacts \
 dotnet run --project tools -- list documents \
   -b <business-id> --fields "id,number,date,balance" > documents.csv
 
-# edit accounts.csv keeping rows ordered by `id`
+# edit accounts.csv keeping `id`
 dotnet run --project tools -- update accounts \
   -b <business-id> --fields "id,number,name" < accounts.csv
 
-# edit contacts.csv keeping rows ordered by `id`
+# edit contacts.csv keeping `id`
 dotnet run --project tools -- update contacts \
   -b <business-id> --fields "id,name,invoicing_email,notes" < contacts.csv
 
@@ -74,11 +74,11 @@ Mutating commands:
 | Command | Description | Notes |
 | --- | --- | --- |
 | `list businesses [--fields …]` | Streams every business the token can access and writes CSV | Default columns are the DTO fields; use `--fields` to select a subset |
-| `list accounts -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams accounts, hydrates them, writes CSV ordered by API `id` | Rows are emitted in ascending `id` order |
+| `list accounts -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams accounts, hydrates them, writes CSV | Rows are currently emitted in API order |
 | `list contacts -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams contacts, hydrates them, writes CSV | Contacts are emitted from the `/contacts/` endpoint |
 | `list documents -b <id> [--fields …]` | Resolves the business (Y-tunnus or VAT code), streams documents, hydrates them, writes CSV | Documents are currently list-only in the CLI |
-| `update accounts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), aligns each row by `id`, emits PATCH commands for changed fields only | CSV **must** include `id` and remain ordered to match the streamed accounts |
-| `update contacts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), aligns each row by `id`, emits PATCH commands for changed fields only | CSV **must** include `id` and remain ordered to match the streamed contacts |
+| `update accounts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), fetches each current account by `id`, and emits PATCH requests for changed fields only | CSV **must** include `id`; rows are processed in CSV order and may repeat an `id` |
+| `update contacts -b <id> [--fields …]` | Reads CSV from stdin (or `--in`), fetches each current contact by `id`, and emits PATCH requests for changed fields only | CSV **must** include `id`; rows are processed in CSV order and may repeat an `id` |
 | `delete accounts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
 | `delete contacts -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
 | `delete documents -b <id>` | Reads a CSV containing `id` values and issues DELETE calls sequentially | Extra columns are ignored |
@@ -94,9 +94,9 @@ Unimplemented (exit code `1` with a TODO):
 ## CSV expectations
 
 - `--fields` accepts top-level DTO property names as comma-separated and/or space-separated input (for example `--fields "id,name"` or `--fields id name`). The same selection applies to both output and input.
-- `id` is always required when reading updates or deletes; `Program.fs` prepends it for you even if `--fields` omits it.
-- Account rows must remain ordered by `id`. `Account.deltasToCommands` aligns the live stream with the CSV by walking both sequences in lockstep; reordering breaks alignment.
-- Contact rows should also remain ordered by `id`. `Contact.deltasToCommands` uses the same lockstep alignment strategy as accounts.
+- `id` is always required when reading updates or deletes; if `--fields` is present, the CSV header still has to include it.
+- Update rows are handled one CSV row at a time: the CLI fetches the current server-side entity by `id`, normalizes the requested patch against that fresh value, and only then issues a PATCH when something changed.
+- Repeated `id` values in update CSV input are allowed. They are processed sequentially, so a later row sees the result of earlier successful PATCHes for the same `id`.
 - Collections of strings are stored as `;`-separated lists. `option<_>` values use empty cells for `None`.
 - Extra columns in the input are ignored when `--fields` is present; otherwise we validate that every header maps to a property.
 
@@ -122,7 +122,7 @@ The context wraps the shared `Http.createHttpContext` and `Accounting.ofHttp` fr
 - **Runtime + Streams** (`Tools.fs`): resolves env vars, builds `AccountingContext`, and routes CSV readers/writers.
 - **Program flow** (`Program.fs`):
   - `list` commands: stream via `Streams.streamBusinesses`, `Streams.streamAccounts`, `Streams.streamContacts`, or `Streams.streamDocuments`, hydrate rows (`Streams.hydrateAndUnwrap`), write CSV lazily.
-  - `update` accounts/contacts: read CSV into repo-owned delta records (`AccountDelta` / `ContactDelta`) that keep `id` in-band for CSV alignment, normalize them against live API state, then convert them into generated `*Request` PATCH payloads.
+  - `update` accounts/contacts: read CSV into repo-owned delta records (`AccountDelta` / `ContactDelta`), fetch the current entity for each CSV `id`, normalize against that fresh API state, and PATCH immediately when something changed.
   - `delete` accounts: map CSV rows to `AccountCommand.DeleteAccount` and reuse the same execution + folding machinery.
   - `map accounts`: align source/target account streams by `number` and output `source_id,target_id,number`.
   - `create documents`: read minimal create payload rows, optionally rewrite blueprint account IDs, then POST documents sequentially.
@@ -134,7 +134,7 @@ Everything runs on `AsyncSeq`, so listing scales to large datasets without holdi
 - No retries or backoff; transient HTTP failures halt the stream.
 - No dry-run mode—`update` and `delete` execute immediately once the CSV is read.
 - Business updates and account creation are placeholders.
-- Alignment requires sorted CSV rows; future work could introduce a keyed lookup to relax that constraint.
+- `update` trades extra GET requests for streaming-friendly semantics; very large CSV updates will be network-bound.
 - `--format` is hard-wired to CSV; JSON or Parquet would require additional mapping.
 - Packaging as a standalone `nocfo` binary is planned but not implemented.
 
