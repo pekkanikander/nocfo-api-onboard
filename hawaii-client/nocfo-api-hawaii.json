@@ -9,28 +9,8 @@
   "overrideSchema": {
     "components": {
       "schemas": {
-        "PatchedAccount": {
-            "required": [
-              "id"
-            ]
-        },
         "DocumentList": {
           "properties": {
-            "audit_trail_last_seen_at": {
-              "type": "string",
-              "format": "date-time",
-              "nullable": true
-            },
-            "audit_trail_last_mention_at": {
-              "type": "string",
-              "format": "date-time",
-              "nullable": true
-            },
-            "audit_trail_last_comment_at": {
-              "type": "string",
-              "format": "date-time",
-              "nullable": true
-            },
             "relations": {
               "type": "array",
               "items": {
@@ -42,21 +22,6 @@
         },
         "DocumentInstance": {
           "properties": {
-            "audit_trail_last_seen_at": {
-              "type": "string",
-              "format": "date-time",
-              "nullable": true
-            },
-            "audit_trail_last_mention_at": {
-              "type": "string",
-              "format": "date-time",
-              "nullable": true
-            },
-            "audit_trail_last_comment_at": {
-              "type": "string",
-              "format": "date-time",
-              "nullable": true
-            },
             "relations": {
               "type": "array",
               "items": {
