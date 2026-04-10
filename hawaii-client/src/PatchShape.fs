@@ -9,15 +9,15 @@ open System.Reflection
 open Microsoft.FSharp.Reflection
 open NocfoApi.Http
 
-type DeltaFieldDescriptor =
+type PatchFieldDescriptor =
   { FieldName: string
-    DeltaField: PropertyInfo
+    PatchField: PropertyInfo
     FullField: PropertyInfo
-    DeltaIsOption: bool
+    PatchIsOption: bool
     FullIsOption: bool
-    DeltaNone: obj option }
+    PatchNone: obj option }
 
-module private DeltaShapeInternals =
+module private PatchShapeInternals =
   let ensureRecord (role: string) (t: Type) =
     if not (FSharpType.IsRecord t) then
       failwithf "%s must be an F# record type (got %s)" role t.FullName
@@ -38,7 +38,7 @@ module private DeltaShapeInternals =
     | null -> failwithf "%s is missing property '%s'" owner.FullName name
     | prop -> prop
 
-open DeltaShapeInternals
+open PatchShapeInternals
 
 type PatchShape<'Full,'Patch> private () =
   static let descriptors =
@@ -52,11 +52,11 @@ type PatchShape<'Full,'Patch> private () =
         let fullIsOption = isOptionType fullProp.PropertyType
 
         { FieldName = field.Name
-          DeltaField = field
+          PatchField = field
           FullField = fullProp
-          DeltaIsOption = patchIsOption
+          PatchIsOption = patchIsOption
           FullIsOption = fullIsOption
-          DeltaNone = if patchIsOption then Some (makeNoneValue field.PropertyType) else None })
+          PatchNone = if patchIsOption then Some (makeNoneValue field.PropertyType) else None })
 
   static let patchCtor =
     FSharpValue.PreComputeRecordConstructor(typeof<'Patch>)
@@ -69,11 +69,11 @@ type PatchShape<'Full,'Patch> private () =
 
   static member Normalize(full: 'Full, patch: 'Patch) : 'Patch =
     let normalizeField descriptor =
-      let original = descriptor.DeltaField.GetValue(patch)
-      if not descriptor.DeltaIsOption then
+      let original = descriptor.PatchField.GetValue(patch)
+      if not descriptor.PatchIsOption then
         original
       else
-        match tryOptionalValue descriptor.DeltaField.PropertyType original with
+        match tryOptionalValue descriptor.PatchField.PropertyType original with
         | None -> original
         | Some desired ->
             let fullValue = descriptor.FullField.GetValue(full)
@@ -86,7 +86,7 @@ type PatchShape<'Full,'Patch> private () =
                 equivalent fullValue desired
 
             if matches then
-              descriptor.DeltaNone
+              descriptor.PatchNone
               |> Option.defaultWith (fun () -> failwithf "Descriptor for '%s' expected optional patch field." descriptor.FieldName)
             else
               original
@@ -99,7 +99,7 @@ type PatchShape<'Full,'Patch> private () =
   static member HasChanges(patch: 'Patch) : bool =
     descriptors
     |> Array.exists (fun descriptor ->
-        descriptor.DeltaIsOption &&
-          (descriptor.DeltaField.GetValue(patch)
-           |> tryOptionalValue descriptor.DeltaField.PropertyType
+        descriptor.PatchIsOption &&
+          (descriptor.PatchField.GetValue(patch)
+           |> tryOptionalValue descriptor.PatchField.PropertyType
            |> Option.isSome))

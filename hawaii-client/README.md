@@ -33,7 +33,7 @@ They are small, self-contained experiments rather than polished CLI tools.
 
 Read-only scripts:
 - `TestClient.fsx`
-- `TestDeltaShape.fsx`
+- `TestPatchShape.fsx`
 - `TestAlignAccountsPermissive.fsx`
 - `TestCsvReadDeltas.fsx`
 - `TestBalance.fsx`
