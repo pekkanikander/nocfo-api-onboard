@@ -1,28 +1,76 @@
-namespace Nocfo.Tools
+namespace Nocfo
 
 open System
 open System.Globalization
 open System.IO
+open System.Linq.Expressions
 open System.Reflection
-open System.Text
 open CsvHelper
 open CsvHelper.Configuration
 open FSharp.Control
 open Microsoft.FSharp.Reflection
 open Newtonsoft.Json
-open Nocfo.Tools.Arguments.CvsMapping
+open Newtonsoft.Json.Linq
+open Nocfo.CsvHelpers
 open NocfoApi.Http
 
-// Depends on your existing helpers:
-open Nocfo.CsvHelpers                 // registerFSharpConvertersFor
-open Nocfo.Tools.Arguments            // buildClassMapForFields<'T>
-open Newtonsoft.Json.Linq
+module private CsvFieldMapping =
+  let normalizeFields (fields: string list) : string list =
+    fields
+    |> List.collect (fun token -> token.Split(',') |> Array.toList)
+    |> List.map (fun s -> s.Trim())
+    |> List.filter (fun s -> s <> "")
 
-module private HeaderValidation =
+  let private mapProperty<'T> (map: DefaultClassMap<'T>) (p: PropertyInfo) (index: int) (header: string option) =
+    let param = Expression.Parameter(typeof<'T>, "x")
+    let bodyProp = Expression.Property(param, p) :> Expression
+    let bodyObj =
+      if p.PropertyType.IsValueType then Expression.Convert(bodyProp, typeof<obj>) :> Expression
+      else bodyProp
+    let lambda : Expression<Func<'T, obj>> = Expression.Lambda<Func<'T, obj>>(bodyObj, param)
+    let mm = CsvMapExtensions.MapBoxed(map, lambda).Index(index)
+    header |> Option.iter (fun h -> mm.Name(h) |> ignore)
+    mm |> ignore
 
-  /// Validate the CSV header against 'T' and optional --fields.
-  /// - If fields = None or [], require that every column maps to a member on 'T'.
-  /// - If fields = Some xs, require that all xs are present; extra columns are ignored.
+  let buildClassMapForFields<'T> (fields: string list) : Result<DefaultClassMap<'T>, string list> =
+    let t = typeof<'T>
+    let props = t.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+    let byNameCI =
+      props
+      |> Array.map (fun p -> p.Name.ToLowerInvariant(), p)
+      |> dict
+
+    let wanted =
+      match normalizeFields fields with
+      | [] -> props |> Array.toList |> List.map (fun p -> p.Name)
+      | xs -> xs
+
+    let resolved, missing =
+      (([], []), wanted)
+      ||> List.fold (fun (accOk, accMissing) name ->
+          let key = name.ToLowerInvariant()
+          if byNameCI.ContainsKey key then
+            (byNameCI.[key] :: accOk, accMissing)
+          else
+            (accOk, name :: accMissing))
+
+    match missing with
+    | _::_ ->
+        let missingOrdered =
+          wanted
+          |> List.filter (fun n -> missing |> List.exists (fun m -> String.Equals(m, n, StringComparison.Ordinal)))
+          |> List.distinct
+        Error missingOrdered
+    | [] ->
+        let orderedProps = resolved |> List.rev
+        let map = DefaultClassMap<'T>()
+        orderedProps
+        |> List.iteri (fun idx (p: PropertyInfo) -> mapProperty map p idx (Some p.Name))
+        Ok map
+
+module private CsvHeaderValidation =
+  open CsvFieldMapping
+
   let validateHeader<'T> (header: string[]) (fields: string list option) : unit =
     let headerNames =
       header
@@ -31,7 +79,6 @@ module private HeaderValidation =
 
     match fields |> Option.defaultValue [] |> normalizeFields with
     | [] ->
-        // No --fields: every column must correspond to a property on 'T'
         let t = typeof<'T>
         let propNames =
           t.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
@@ -49,7 +96,6 @@ module private HeaderValidation =
             (String.Join(", ", unknown))
 
     | wanted ->
-        // --fields present: ensure all requested fields exist, ignore extra columns
         let wantedCI =
           wanted
           |> List.map (fun s -> s.ToLowerInvariant())
@@ -63,8 +109,6 @@ module private HeaderValidation =
             typeof<'T>.FullName
             (String.Join(", ", missing))
 
-  /// Validate a flattened delta CSV where `id` is a top-level column and the
-  /// remaining columns map directly to properties on the patch record type.
   let validateDeltaHeader<'TPatch> (header: string[]) (fields: string list option) : unit =
     let headerNames =
       header
@@ -120,15 +164,14 @@ module private HeaderValidation =
             typeof<'TPatch>.FullName
             (String.Join(", ", missing))
 
-
 module Csv =
+  open CsvFieldMapping
+  open CsvHeaderValidation
 
-  /// Policy when some field names passed via -f/--fields don’t exist on 'T.
   type UnknownFieldPolicy =
     | Fail
     | WarnAndDrop
 
-  /// Writer options with sensible defaults.
   type IOOptions =
     { Culture            : CultureInfo
       IncludeHeader      : bool
@@ -138,25 +181,21 @@ module Csv =
   let defaultIOOptions =
     { Culture            = CultureInfo.InvariantCulture
       IncludeHeader      = true
-      NewLine            = "\n"              // stable across platforms
+      NewLine            = "\n"
       UnknownFieldPolicy = UnknownFieldPolicy.Fail }
 
-  /// Create a CsvWriter bound to an existing TextWriter.
   let private mkCsvWriter (tw: TextWriter) (opts: IOOptions) =
     let cfg = CsvConfiguration(opts.Culture)
     new CsvWriter(tw, cfg)
 
   let private mkCsvReader (tr: TextReader) (opts: IOOptions) =
     let cfg = CsvConfiguration(opts.Culture)
-    // Ignore extra columns in CSV that aren't in the class map
     cfg.MissingFieldFound <- null
     new CsvReader(tr, cfg)
 
-  /// If fields are provided, build and register a map that selects only those properties of 'T'.
-  /// Returns the list of unknown field names (if any).
   let private tryRegisterFieldsMap<'T> (context: CsvContext) (fields: string list option) =
     match fields with
-    | None | Some ([] ) -> []
+    | None | Some [] -> []
     | Some xs ->
         match buildClassMapForFields<'T> xs with
         | Ok classMap ->
@@ -165,51 +204,43 @@ module Csv =
         | Error missing ->
             missing
 
-  /// Core writer: write an AsyncSeq<'T> to CSV using CsvHelper.
-  /// - Registers F# converters.
-  /// - Optionally restricts columns via -f/--fields (top-level properties).
-  /// - Writes header once (configurable).
-  /// - Returns a lazy AsyncSeq<unit> that writes as it's consumed.
   let writeCsvGeneric<'T>
-      (tw      : TextWriter)
-      (fields  : string list option)
-      (rows    : AsyncSeq<'T>)
+      (tw: TextWriter)
+      (fields: string list option)
+      (rows: AsyncSeq<'T>)
     : AsyncSeq<unit> =
     let csv = mkCsvWriter tw defaultIOOptions
 
-    // F# shapes (option<>, list<>, JToken)
     registerFSharpConvertersFor csv.Context typeof<'T>
 
-    // Apply field selection map (if any)
     let missing = tryRegisterFieldsMap<'T> csv.Context fields
     match missing with
     | (_::_ as miss) ->
         failwithf "Unknown field(s) for %s: %s"
-                  typeof<'T>.FullName (String.Join(", ", miss))
+          typeof<'T>.FullName
+          (String.Join(", ", miss))
     | _ -> ()
 
     let mutable disposed = false
     let dispose () =
-        if not disposed then
-            csv.Flush()
-            tw.Flush()
-            (csv :> IDisposable).Dispose()
-            disposed <- true
+      if not disposed then
+        csv.Flush()
+        tw.Flush()
+        (csv :> IDisposable).Dispose()
+        disposed <- true
 
     asyncSeq {
-        try
-            // Header
-            csv.WriteHeader<'T>()
-            csv.NextRecord()
-            yield ()
+      try
+        csv.WriteHeader<'T>()
+        csv.NextRecord()
+        yield ()
 
-            // Stream rows
-            yield! rows |> AsyncSeq.map (fun item ->
-                csv.WriteRecord(item)
-                csv.NextRecord()
-            )
-        finally
-            dispose()
+        yield! rows |> AsyncSeq.map (fun item ->
+          csv.WriteRecord(item)
+          csv.NextRecord()
+        )
+      finally
+        dispose ()
     }
 
   let private tryFindColumnIndex (fieldName: string) (header: string[]) =
@@ -219,27 +250,26 @@ module Csv =
 
   let private collectRecordMetadata (t: Type) headers =
     let fieldsInfo = FSharpType.GetRecordFields(t, true)
-    // For each record field, find the index of the CSV column, if present
     let columnIndexPerField =
       fieldsInfo
       |> Array.map (fun p -> tryFindColumnIndex p.Name headers)
-    // Default value per field: None for options, default for others
+
     let makeDefault (ft: Type) : obj =
       if FSharpType.IsUnion(ft, true) then
-        // Heuristic: treat F# option types as union with case "None"
         let cases = FSharpType.GetUnionCases(ft, true)
         match cases |> Array.tryFind (fun c -> c.Name = "None") with
         | Some noneCase -> FSharpValue.MakeUnion(noneCase, [||], true)
         | None ->
-          if ft.IsValueType then Activator.CreateInstance(ft) else null
+            if ft.IsValueType then Activator.CreateInstance(ft) else null
       elif ft.IsValueType then
         Activator.CreateInstance(ft)
       else
         null
-    // Record the defauts for all fields
+
     let defaults =
       fieldsInfo
       |> Array.map (fun p -> makeDefault p.PropertyType)
+
     (fieldsInfo, columnIndexPerField, defaults)
 
   let private isOptionType (t: Type) =
@@ -254,13 +284,13 @@ module Csv =
       args.Length = 1
       && args.[0] = typeof<string>
       && (
-           def = typedefof<list<_>>
-           || def = typedefof<System.Collections.Generic.List<_>>
-           || def = typedefof<seq<_>>
-           || def = typedefof<System.Collections.Generic.IEnumerable<_>>
-           || def = typedefof<System.Collections.Generic.IReadOnlyList<_>>
-           || def = typedefof<System.Collections.Generic.IList<_>>
-         )
+          def = typedefof<list<_>>
+          || def = typedefof<System.Collections.Generic.List<_>>
+          || def = typedefof<seq<_>>
+          || def = typedefof<System.Collections.Generic.IEnumerable<_>>
+          || def = typedefof<System.Collections.Generic.IReadOnlyList<_>>
+          || def = typedefof<System.Collections.Generic.IList<_>>
+      )
     else
       false
 
@@ -298,11 +328,10 @@ module Csv =
           if ft.IsArray then
             parts :> obj
           elif ft.IsGenericType && ft.GetGenericTypeDefinition() = typedefof<list<_>> then
-            // Build an F# list<string> from the array.
             let listType = typedefof<list<_>>.MakeGenericType(typeof<string>)
             let cases = FSharpType.GetUnionCases(listType, true)
             let emptyCase = cases |> Array.find (fun c -> c.Name = "Empty")
-            let consCase  = cases |> Array.find (fun c -> c.Name = "Cons")
+            let consCase = cases |> Array.find (fun c -> c.Name = "Cons")
             let mutable listObj = FSharpValue.MakeUnion(emptyCase, [||], true)
             for idx = parts.Length - 1 downto 0 do
               listObj <- FSharpValue.MakeUnion(consCase, [| parts.[idx] :> obj; listObj |], true)
@@ -317,19 +346,13 @@ module Csv =
       Some valueObj
 
   let private setOptionFieldValue (csv: CsvReader) (colIndex: int) (ft: Type) =
-    // ft is option<'a>; read inner type and wrap in Some/None.
     let innerType = ft.GetGenericArguments().[0]
-
-    // First read the raw text to decide between None and Some.
     let rawText = csv.GetField(colIndex)
     if String.IsNullOrWhiteSpace rawText then
       None
     else
-      // Non-empty: decide how to parse the inner type.
       let innerValueObj : obj =
         if innerType = typeof<JToken> then
-          // Special-case Option<JToken>: interpret the cell as JSON if it looks like JSON,
-          // otherwise as a simple string JValue.
           let s = rawText.Trim()
           try
             if s.StartsWith("{") || s.StartsWith("[") then
@@ -337,10 +360,8 @@ module Csv =
             else
               (JValue(s) :> JToken :> obj)
           with _ ->
-            // Fallback: always treat as string JValue if parsing fails.
             (JValue(rawText) :> JToken :> obj)
         elif isStringCollectionType innerType then
-          // option<collection<string>>: parse as a single-cell collection of strings.
           match setCollectionFieldValue csv "(collection)" innerType colIndex with
           | Some v -> v
           | None -> null
@@ -349,7 +370,6 @@ module Csv =
           | Some v -> v
           | None -> null
         else
-          // Scalar option<'a>: delegate to CsvHelper for 'a.
           csv.GetField(innerType, colIndex)
 
       let unionCases = FSharpType.GetUnionCases(ft, true)
@@ -364,34 +384,32 @@ module Csv =
     for i = 0 to fieldsInfo.Length - 1 do
       match columnIndexPerField.[i] with
       | Some colIndex ->
-        let fi = fieldsInfo.[i]
-        let ft = fi.PropertyType
+          let fi = fieldsInfo.[i]
+          let ft = fi.PropertyType
 
-        if isOptionType ft then
-          match setOptionFieldValue csv colIndex ft with
-          | Some optValue -> values.[i] <- optValue
-          | None -> () // keep default (None)
-        elif isStringCollectionType ft then
-          match setCollectionFieldValue csv fi.Name ft colIndex with
-          | Some collValue -> values.[i] <- collValue
-          | None -> () // keep default (null or existing collection)
-        elif isCollectionType ft then
-          match setCollectionFieldValue csv fi.Name ft colIndex with
-          | Some collValue -> values.[i] <- collValue
-          | None -> () // keep default (null or existing collection)
-        else
-          // Non-option, non-collection: let CsvHelper convert directly to the property type.
-          let v = csv.GetField(ft, colIndex)
-          values.[i] <- v
+          if isOptionType ft then
+            match setOptionFieldValue csv colIndex ft with
+            | Some optValue -> values.[i] <- optValue
+            | None -> ()
+          elif isStringCollectionType ft then
+            match setCollectionFieldValue csv fi.Name ft colIndex with
+            | Some collValue -> values.[i] <- collValue
+            | None -> ()
+          elif isCollectionType ft then
+            match setCollectionFieldValue csv fi.Name ft colIndex with
+            | Some collValue -> values.[i] <- collValue
+            | None -> ()
+          else
+            let v = csv.GetField(ft, colIndex)
+            values.[i] <- v
       | None ->
-        // Column missing in CSV: keep default (e.g. None for option)
-        ()
+          ()
     values
+
   let readCsvGeneric<'T> (tr: TextReader) (fields: string list option)
     : AsyncSeq<'T> =
     let csv = mkCsvReader tr defaultIOOptions
 
-    // Register custom converters for F# types (option<>, list<>, etc.)
     registerFSharpConvertersFor csv.Context typeof<'T>
 
     let mutable disposed = false
@@ -408,23 +426,18 @@ module Csv =
           failwithf "Expected a F# record, got %s" t.FullName
 
         if csv.Read() then
-          // Read and validate header first
           csv.ReadHeader() |> ignore
 
-          HeaderValidation.validateHeader<'T> csv.HeaderRecord fields
+          validateHeader<'T> csv.HeaderRecord fields
 
-          // Precompute helpers only once, before streaming rows
           let recordFieldInfos, fieldColumnIndex, fieldDefaults =
             collectRecordMetadata t csv.HeaderRecord
 
-          // Now stream rows
           while csv.Read() do
-            // Build an F# record manually using CsvHelper for field conversion
             let values = buildRecordFromCsv<'T> csv recordFieldInfos fieldColumnIndex fieldDefaults
-
             yield (FSharpValue.MakeRecord(t, values, true) :?> 'T)
       finally
-        dispose()
+        dispose ()
     }
 
   let readDeltasCore<'TPatch, 'TDelta>
@@ -432,7 +445,6 @@ module Csv =
       (tr: TextReader)
       (fields: string list option)
     : AsyncSeq<'TDelta> =
-
     let csv = mkCsvReader tr defaultIOOptions
 
     registerFSharpConvertersFor csv.Context typeof<'TPatch>
@@ -450,7 +462,7 @@ module Csv =
         if csv.Read() then
           csv.ReadHeader() |> ignore
 
-          HeaderValidation.validateDeltaHeader<'TPatch> csv.HeaderRecord fields
+          validateDeltaHeader<'TPatch> csv.HeaderRecord fields
 
           let idColumn =
             tryFindColumnIndex "id" csv.HeaderRecord
@@ -466,12 +478,13 @@ module Csv =
             let delta = mkDelta idValue (patch :?> 'TPatch)
             yield delta
       finally
-        dispose()
+        dispose ()
     }
 
   let inline readDeltas< ^TDelta, ^TPatch
       when ^TDelta : (static member Create : int * ^TPatch -> ^TDelta) >
-      (tr: TextReader) (fields: string list option)
+      (tr: TextReader)
+      (fields: string list option)
     : AsyncSeq< ^TDelta > =
     readDeltasCore< ^TPatch, ^TDelta >
       (fun id patch -> (^TDelta : (static member Create : int * ^TPatch -> ^TDelta) (id, patch)))

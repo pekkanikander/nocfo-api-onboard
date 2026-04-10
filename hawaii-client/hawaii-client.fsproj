@@ -19,6 +19,7 @@
     <Compile Include="src/Domain.fs" />
     <Compile Include="src/Reports.fs" />
     <Compile Include="src/CsvHelper.fs" />
+    <Compile Include="src/Csv.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="src/hawaii-client.csproj" />

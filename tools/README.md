@@ -120,7 +120,6 @@ The context wraps the shared `Http.createHttpContext` and `Accounting.ofHttp` fr
 
 - **Arguments** (`Arguments.fs`): Argu discriminated unions define `list`, `update`, `delete`, and nested subcommands (`businesses`, `accounts`, `contacts`, `documents`). `--fields` and `--format` live at the entity level.
 - **Runtime + Streams** (`Tools.fs`): resolves env vars, builds `AccountingContext`, and routes CSV readers/writers.
-- **CSV helpers** (`CsvHelper.fs`): bridges CsvHelper with F# records, ensuring the CLI and scripts share the same converters.
 - **Program flow** (`Program.fs`):
   - `list` commands: stream via `Streams.streamBusinesses`, `Streams.streamAccounts`, `Streams.streamContacts`, or `Streams.streamDocuments`, hydrate rows (`Streams.hydrateAndUnwrap`), write CSV lazily.
   - `update` accounts/contacts: read CSV into repo-owned delta records (`AccountDelta` / `ContactDelta`) that keep `id` in-band for CSV alignment, normalize them against live API state, then convert them into generated `*Request` PATCH payloads.

@@ -47,7 +47,7 @@ let listBusinesses (toolContext: ToolContext) (args: ParseResults<BusinessesArgs
                 | Ok business -> business.raw
                 | Error error -> failwithf "Failed to get business: %A" error)
         let writeCsv =
-            Nocfo.Tools.Csv.writeCsvGeneric<NocfoApi.Types.Business> output (Some fields) rows
+            Nocfo.Csv.writeCsvGeneric<NocfoApi.Types.Business> output (Some fields) rows
         do! writeCsv |> AsyncSeq.iter ignore
         return 0
     }
@@ -77,7 +77,7 @@ let private listEntitiesForBusiness<'Full, 'Partial>
                     | Ok entity -> entity
                     | Error error -> failwithf "Failed to hydrate %s: %A" hydrateFailureLabel error)
             let writeCsv =
-                Nocfo.Tools.Csv.writeCsvGeneric<'Full> output (Some fields) rows
+                Nocfo.Csv.writeCsvGeneric<'Full> output (Some fields) rows
             do! writeCsv |> AsyncSeq.iter ignore
             return 0
         | Error error ->
@@ -188,7 +188,7 @@ let updateAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
         | Ok ctx ->
             // The desired state of accounts from the CSV file.
             let csvStream =
-                Nocfo.Tools.Csv.readDeltas<AccountDelta, NocfoApi.Types.PatchedAccountRequest> input (Some fields)
+                Nocfo.Csv.readDeltas<AccountDelta, NocfoApi.Types.PatchedAccountRequest> input (Some fields)
                 |> AsyncSeq.map Ok
             // The current state of accounts from the API.
             let accountStream =
@@ -213,7 +213,7 @@ let updateContacts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
         | Ok ctx ->
             // The desired state of contacts from the CSV file.
             let csvStream =
-                Nocfo.Tools.Csv.readDeltas<ContactDelta, NocfoApi.Types.PatchedContactRequest> input (Some fields)
+                Nocfo.Csv.readDeltas<ContactDelta, NocfoApi.Types.PatchedContactRequest> input (Some fields)
                 |> AsyncSeq.map Ok
             // The current state of contacts from the API.
             let contactStream =
@@ -235,7 +235,7 @@ let deleteAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
         let f = "id" :: fields
         let input = toolContext.Input
         let csvStream =
-            Nocfo.Tools.Csv.readCsvGeneric<AccountDeletePayload> input (Some f)
+            Nocfo.Csv.readCsvGeneric<AccountDeletePayload> input (Some f)
             |> AsyncSeq.map Ok
         let! businessContext = getBusinessContext toolContext args
         match businessContext with
@@ -257,7 +257,7 @@ let deleteDocuments (toolContext: ToolContext) (args: ParseResults<BusinessScope
         let f = "id" :: fields
         let input = toolContext.Input
         let csvStream =
-            Nocfo.Tools.Csv.readCsvGeneric<DocumentDeletePayload> input (Some f)
+            Nocfo.Csv.readCsvGeneric<DocumentDeletePayload> input (Some f)
             |> AsyncSeq.map Ok
         let! businessContext = getBusinessContext toolContext args
         match businessContext with
@@ -279,7 +279,7 @@ let deleteContacts (toolContext: ToolContext) (args: ParseResults<BusinessScoped
         let f = "id" :: fields
         let input = toolContext.Input
         let csvStream =
-            Nocfo.Tools.Csv.readCsvGeneric<ContactDeletePayload> input (Some f)
+            Nocfo.Csv.readCsvGeneric<ContactDeletePayload> input (Some f)
             |> AsyncSeq.map Ok
         let! businessContext = getBusinessContext toolContext args
         match businessContext with
@@ -417,7 +417,7 @@ let mapAccounts (toolContext: ToolContext) (args: ParseResults<BusinessScopedArg
                         do!
                             rows
                             |> AsyncSeq.ofSeq
-                            |> Nocfo.Tools.Csv.writeCsvGeneric<Mapping.IDMap> toolContext.Output None
+                            |> Nocfo.Csv.writeCsvGeneric<Mapping.IDMap> toolContext.Output None
                             |> AsyncSeq.iter ignore
                         if warnings > 0 then
                             return ExitCodes.EX_DATAERR
@@ -535,7 +535,7 @@ let private loadAccountIdMap (mapPath: string) =
     async {
         use reader = new StreamReader(mapPath)
         let! rows =
-            Nocfo.Tools.Csv.readCsvGeneric<Mapping.IDMap> reader None
+            Nocfo.Csv.readCsvGeneric<Mapping.IDMap> reader None
             |> AsyncSeq.toListAsync
         return rows |> List.map (fun row -> row.source_id, row.target_id) |> Map.ofList
     }
@@ -556,7 +556,7 @@ let createDocuments (toolContext: ToolContext) (args: ParseResults<DocumentCreat
                 | None -> async.Return Map.empty
 
             let rowStream =
-                Nocfo.Tools.Csv.readCsvGeneric<DocumentCreatePayload> toolContext.Input (Some fields)
+                Nocfo.Csv.readCsvGeneric<DocumentCreatePayload> toolContext.Input (Some fields)
                 |> AsyncSeq.map (fun row ->
                     if Map.isEmpty accountIdMap then
                         Ok row

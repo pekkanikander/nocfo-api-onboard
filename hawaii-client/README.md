@@ -35,6 +35,7 @@ Read-only scripts:
 - `TestClient.fsx`
 - `TestDeltaShape.fsx`
 - `TestAlignAccountsPermissive.fsx`
+- `TestCsvReadDeltas.fsx`
 - `TestBalance.fsx`
 
 Mutating or potentially mutating scripts:
