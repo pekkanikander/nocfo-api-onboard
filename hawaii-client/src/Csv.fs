@@ -289,6 +289,15 @@ module Csv =
   let private isOptionType (t: Type) =
     t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>>
 
+  let private isFSharpStringEnumType (t: Type) =
+    FSharpType.IsUnion(t, true)
+    && (
+      t.GetCustomAttributes(true)
+      |> Seq.exists (fun attr ->
+          let fullName = attr.GetType().FullName
+          not (isNull fullName) && fullName.EndsWith("StringEnumAttribute", StringComparison.Ordinal))
+    )
+
   let private isStringCollectionType (t: Type) =
     if t.IsArray then
       t.GetElementType() = typeof<string>
@@ -324,6 +333,26 @@ module Csv =
 
   let private deserializeJsonValue (rawText: string) (t: Type) =
     JsonConvert.DeserializeObject(rawText, t, Serializer.settings)
+
+  let private parseJTokenValue (rawText: string) : obj =
+    let s = rawText.Trim()
+    try
+      if s.StartsWith("{") || s.StartsWith("[") then
+        (JToken.Parse(s) :> obj)
+      else
+        (JValue(s) :> JToken :> obj)
+    with _ ->
+      (JValue(rawText) :> JToken :> obj)
+
+  let private parseScalarValue (csv: CsvReader) (colIndex: int) (t: Type) : obj =
+    let rawText = csv.GetField(colIndex)
+    if t = typeof<JToken> then
+      parseJTokenValue rawText
+    elif isFSharpStringEnumType t then
+      let jsonText = JsonConvert.SerializeObject(rawText, Serializer.settings)
+      deserializeJsonValue jsonText t
+    else
+      csv.GetField(t, colIndex)
 
   let private setCollectionFieldValue (csv: CsvReader) (fieldName: string) (ft: Type) (colIndex: int) =
     let rawText = csv.GetField(colIndex)
@@ -366,16 +395,7 @@ module Csv =
       None
     else
       let innerValueObj : obj =
-        if innerType = typeof<JToken> then
-          let s = rawText.Trim()
-          try
-            if s.StartsWith("{") || s.StartsWith("[") then
-              (JToken.Parse(s) :> obj)
-            else
-              (JValue(s) :> JToken :> obj)
-          with _ ->
-            (JValue(rawText) :> JToken :> obj)
-        elif isStringCollectionType innerType then
+        if isStringCollectionType innerType then
           match setCollectionFieldValue csv "(collection)" innerType colIndex with
           | Some v -> v
           | None -> null
@@ -384,7 +404,7 @@ module Csv =
           | Some v -> v
           | None -> null
         else
-          csv.GetField(innerType, colIndex)
+          parseScalarValue csv colIndex innerType
 
       let unionCases = FSharpType.GetUnionCases(ft, true)
       let someCase =
@@ -414,7 +434,7 @@ module Csv =
             | Some collValue -> values.[i] <- collValue
             | None -> ()
           else
-            let v = csv.GetField(ft, colIndex)
+            let v = parseScalarValue csv colIndex ft
             values.[i] <- v
       | None ->
           ()
