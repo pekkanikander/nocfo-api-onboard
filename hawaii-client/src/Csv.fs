@@ -248,11 +248,25 @@ module Csv =
     header
     |> Array.tryFindIndex (fun h -> h.Trim().ToLowerInvariant() = target)
 
-  let private collectRecordMetadata (t: Type) headers =
+  let private collectRecordMetadata (t: Type) headers (fields: string list option) =
     let fieldsInfo = FSharpType.GetRecordFields(t, true)
+    let allowedFields =
+      fields
+      |> Option.map normalizeFields
+      |> Option.map (List.map (fun name -> name.Trim().ToLowerInvariant()) >> Set.ofList)
+
+    let isRequested (fieldName: string) =
+      match allowedFields with
+      | None -> true
+      | Some allowed -> allowed.Contains(fieldName.Trim().ToLowerInvariant())
+
     let columnIndexPerField =
       fieldsInfo
-      |> Array.map (fun p -> tryFindColumnIndex p.Name headers)
+      |> Array.map (fun p ->
+          if isRequested p.Name then
+            tryFindColumnIndex p.Name headers
+          else
+            None)
 
     let makeDefault (ft: Type) : obj =
       if FSharpType.IsUnion(ft, true) then
@@ -431,7 +445,7 @@ module Csv =
           validateHeader<'T> csv.HeaderRecord fields
 
           let recordFieldInfos, fieldColumnIndex, fieldDefaults =
-            collectRecordMetadata t csv.HeaderRecord
+            collectRecordMetadata t csv.HeaderRecord fields
 
           while csv.Read() do
             let values = buildRecordFromCsv<'T> csv recordFieldInfos fieldColumnIndex fieldDefaults
@@ -469,7 +483,7 @@ module Csv =
             |> Option.defaultWith (fun () -> failwithf "CSV is missing required column 'id' for %s." typeof<'TDelta>.FullName)
 
           let patchFieldInfos, patchFieldColumns, patchDefaults =
-            collectRecordMetadata patchType csv.HeaderRecord
+            collectRecordMetadata patchType csv.HeaderRecord fields
 
           while csv.Read() do
             let idValue = csv.GetField(typeof<int>, idColumn) :?> int

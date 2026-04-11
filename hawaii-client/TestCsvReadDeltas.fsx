@@ -14,6 +14,10 @@ let private csvText = """id,number,name_translations
 2,,
 """
 
+let private csvTextWithIgnoredExtraColumns = """id,notes,name_aliases
+1,hello,[BROKEN VALUE]
+"""
+
 let private fail label expected actual =
     failwithf "%s failed.\nExpected: %A\nActual:   %A" label expected actual
 
@@ -41,3 +45,18 @@ match deltas with
     printfn "readDeltas regression: ok"
 | other ->
     fail "delta row count" 2 other.Length
+
+let contactDeltas =
+    use reader = new StringReader(csvTextWithIgnoredExtraColumns)
+    Nocfo.Csv.readDeltas<ContactDelta, NocfoApi.Types.PatchedContactRequest> reader (Some [ "id"; "notes" ])
+    |> AsyncSeq.toListAsync
+    |> Async.RunSynchronously
+
+match contactDeltas with
+| [ first ] ->
+    if first.id <> 1 then fail "contact.id" 1 first.id
+    if first.patch.notes <> Some "hello" then fail "contact.patch.notes" (Some "hello") first.patch.notes
+    if first.patch.name_aliases <> None then fail "contact.patch.name_aliases" None first.patch.name_aliases
+    printfn "readDeltas ignored-extra-columns regression: ok"
+| other ->
+    fail "contact delta row count" 1 other.Length
