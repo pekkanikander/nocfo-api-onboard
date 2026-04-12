@@ -39,10 +39,11 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
    export NOCFO_TOKEN="paste-your-token"
    ```
 
-2. **Build once** (from repo root):
+2. **Build once and run tests** (from repo root):
 
    ```bash
    dotnet build tools
+   dotnet test tests
    ```
 
 3. **List businesses**:
@@ -220,8 +221,7 @@ For a more step-by-step build instructions, see `hawaii-client/README.md`.
 We consider this iteration “good enough to be somewhat useful for developers.”
 At this point, future improvements (if someone picks it up) would include:
 
-- Robust error decoding (HTTP + JSON), possibly with retry policies.
-- AsyncSeq wrappers for more endpoints (documents, transactions).
+- AsyncSeq wrappers for more endpoints (transactions, VAT returns).
 - Folding functions for balance sheets and cash-flow reports.
 - Upstreaming the Hawaii patches instead of relying on a local fork.
 

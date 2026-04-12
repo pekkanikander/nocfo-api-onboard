@@ -88,7 +88,7 @@ Some legacy scripts (`TestAsyncSeq.fsx`, etc.) capture older experiments and may
 
 ## How the Pieces Fit
 
-- `Http.createHttpContext` normalises the base URL (always `/v1`) and attaches `Authorization: Token <value>` to each request. All HTTP helpers surface `HttpError` to keep error handling explicit.
+- `Http.createHttpContext` normalises the base URL (always `/v1`) and attaches `Authorization: Token <value>` to each request. All HTTP helpers surface a structured `HttpError` DU (`Unauthorized`, `NotFound`, `RateLimited`, `ServerError`, `ClientError`, `ParseError`) and retry automatically on 429/5xx with exponential backoff.
 - `AsyncSeqHelpers.paginateByPageSRTP` expresses “fetch page → yield results → follow `next`” as an `AsyncSeq<Result<'a,_>>`, preserving ordering and letting callers apply back-pressure.
 - `Streams.streamBusinesses` / `streamAccounts` wrap generated DTOs in domain types, ensuring we always carry hydration hooks inside `Hydratable`.
 - `Domain.Hydratable` plus `Streams.hydrateAndUnwrap` give consumers (CLI + scripts) the choice between lazy partials and eagerly hydrated entities.
@@ -200,12 +200,19 @@ Note that running **Schemathesis may pollute you server environment.** Be carefu
 
 The script produces a short Markdown summary alongside the raw JUnit/HAR artifacts.
 
+## Running the Unit Tests
+
+The `tests/` project (at the repo root) covers the pure modules in this library with no network access:
+
+```bash
+dotnet test tests
+```
+
+See `tests/` and the **Testing Approach** section in `CLAUDE.md` for details, including the pattern required when asserting on `inline` SRTP functions with Unquote.
+
 ## What’s Next (if you continue)
 
-- Harden error handling in `Http.getJson` (decode errors, retries, structured failures).
 - Extend `Domain.Streams` to other endpoints (transactions, documents) so the CLI can manage more entities.
-- Introduce property-based regression tests around pagination, alignment, and idempotent hydration.
-- Factor `StreamAlignment` into its own package (or upstream to Hawaii) to reduce duplication.
 - Upstream the Hawaii generator patch set instead of pinning to the local fork.
 
 Until then, treat this folder as a living notebook of the first workable Hawaii-based NoCFO client.

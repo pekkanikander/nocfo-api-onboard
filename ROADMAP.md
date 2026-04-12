@@ -9,7 +9,7 @@ The pattern is settled; this roadmap fills in the gaps that were consciously def
 
 Goal: make the existing functionality reliable and testable so it is safe to carry forward.
 
-### 1.1 Error handling & retry
+### 1.1 Error handling & retry — Done.
 
 File: `hawaii-client/src/Http.fs`
 

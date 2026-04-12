@@ -134,13 +134,10 @@ F# requires declaration-before-use ordering:
 
 ## Known Limitations & TODOs (as of April 2026)
 
-- **No retries or backoff** — HTTP errors surface immediately.
 - **No dry-run mode** — mutations execute immediately.
-- **No timeouts or cancellation** on HTTP calls (TODOs in `Http.fs`).
 - **`update businesses` not implemented** (returns TODO exit code).
 - **`create accounts/businesses`** not yet implemented.
 - **Hawaii fork targets net6.0** (EOL) — upstreaming patches is outstanding work.
-- **No formal test project** — testing is FSI scripts against live `api-tst.nocfo.io`.
 - Generated code is **checked in** — regeneration is a manual step when the API spec changes.
 - `BusinessIdentifier.type` comes back as a `JToken` (not a closed enum) — string comparison required.
 
@@ -159,10 +156,40 @@ Do not upgrade Hawaii without verifying these patches still apply or have been u
 
 ## Testing Approach
 
-No xUnit/NUnit project exists.  Testing is:
-1. **FSI scripts** in `hawaii-client/*.fsx` — run against live test API.
-2. **VS Code REST client** files in `requests/` — manual HTTP smoke tests.
-3. Scripts that mutate state are clearly named (`TestCreate*.fsx`, `TestStreams.fsx`).
+Two layers:
+
+### 1. xUnit unit tests (`tests/`)
+
+```bash
+dotnet test tests
+```
+
+Framework: **xUnit** with **Unquote** for assertions (`test <@ expr @>`).
+No network access — all tests are pure.
+
+Targets:
+
+- `PatchShapeTests.fs` — `PatchShape.Normalize` and `HasChanges` logic
+- `StreamAlignmentTests.fs` — `Streams.alignByKey` merge algorithm
+- `DomainDiffTests.fs` — `Account.diffAccount`, `Account.classify`
+- `CsvTests.fs` — `Csv.readCsvGeneric` / `writeCsvGeneric` round-trips
+
+**Unquote + `inline` functions:** Unquote cannot dynamically invoke `inline` SRTP
+functions via quotation reflection. Pre-compute the result into a `let result = ...`
+binding and assert on `result`:
+
+```fsharp
+// ✗ fails at runtime — Unquote can't reflect into an inline function
+test <@ Account.classify acc = Some Asset @>
+
+// ✓ correct pattern
+let result = Account.classify acc
+test <@ result = Some Asset @>
+```
+
+### 2. Live FSI scripts (`hawaii-client/*.fsx`)
+
+Run against `api-tst.nocfo.io`. Require `NOCFO_TOKEN`.
 
 Safe-to-run (read-only): `TestClient`, `TestPatchShape`, `TestAlignAccountsPermissive`,
 `TestCsvReadDeltas`, `TestBalance`.
