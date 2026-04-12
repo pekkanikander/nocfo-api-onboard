@@ -32,17 +32,20 @@ v1-typescript/ … v4-fsharp/  Archived failed attempts — read-only
 ## Key Architectural Concepts
 
 ### Generated vs. Hand-Written Code
+
 - `hawaii-client/generated/` is fully machine-generated from `api/openapi.json`; never edit it manually.
 - All business logic lives in `hawaii-client/src/`.
 - `Domain.fs` wraps the generated types into a cleaner domain model.
 
 ### Pagination & Streaming
+
 - All list endpoints are paginated (page numbers, not cursors, since the Apr 2026 API update).
 - `AsyncSeq.fs` → `paginateByPageSRTP` drives pagination lazily via SRTP constraints.
 - `Streams.fs` provides `streamPaginated`, `streamChanges`, `streamPatches`, `streamCreates`.
 - Use `AsyncSeq` everywhere; never buffer full lists into memory.
 
 ### Full / Patch / Delta Pattern
+
 - API responses have rich *Full* types; PATCH payloads have sparse *Patch* types.
 - `PatchShape.fs` uses cached reflection to normalise patch records, strip unchanged fields, and
   detect no-op updates before sending them to the API.
@@ -50,10 +53,12 @@ v1-typescript/ … v4-fsharp/  Archived failed attempts — read-only
   current state before generating PATCH calls.
 
 ### Authentication
+
 - Token is read from `NOCFO_TOKEN` (or `NOCFO_SOURCE_TOKEN`/`NOCFO_TARGET_TOKEN` for cross-env ops).
 - Header format is `Authorization: Token <value>` (NOT `Bearer`).
 
 ### CSV Layer
+
 - `CsvHelper` (v33) with semicolon-separated list support.
 - `--fields` flag selects which CSV columns to emit or consume.
 - Reading: validates headers, maps to typed F# records, ignores unspecified columns.
@@ -66,7 +71,7 @@ v1-typescript/ … v4-fsharp/  Archived failed attempts — read-only
 # Build the library
 dotnet build hawaii-client
 
-# Build the CLI
+# Build the CLI (and first the library, if needed)
 dotnet build tools
 
 # Run the CLI
@@ -106,7 +111,7 @@ dotnet run --project tools -- map accounts -b <slug>
 dotnet run --project tools -- create documents -b <slug> < documents.csv
 ```
 
-Environment variables: `NOCFO_TOKEN`, `NOCFO_BASE_URL` (default prod), and for cross-env:
+Environment variables: `NOCFO_TOKEN`, `NOCFO_BASE_URL` (default tst), and for cross-env:
 `NOCFO_SOURCE_TOKEN`, `NOCFO_TARGET_TOKEN`, `NOCFO_SOURCE_BASE_URL`, `NOCFO_TARGET_BASE_URL`.
 
 ---
