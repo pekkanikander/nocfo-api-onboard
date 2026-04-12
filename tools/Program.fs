@@ -15,6 +15,8 @@ module ExitCodes =
     [<Literal>]
     let EX_NOINPUT = 66
     [<Literal>]
+    let EX_NOPERM = 77
+    [<Literal>]
     let EX_UNAVAILABLE = 69
     [<Literal>]
     let EX_SOFTWARE = 70
@@ -319,10 +321,32 @@ let delete (toolContext: ToolContext) (args: ParseResults<EntitiesArgs>) =
 
 let private mapDomainErrorToExitCode (err: DomainError) =
     match err with
-    | DomainError.Http _ -> ExitCodes.EX_UNAVAILABLE
+    | DomainError.Http httpErr ->
+        match httpErr with
+        | NocfoClient.Http.HttpError.Unauthorized url ->
+            eprintfn "Authentication failed (401 %O). Check your NOCFO_TOKEN." url
+            ExitCodes.EX_NOPERM
+        | NocfoClient.Http.HttpError.NotFound url ->
+            eprintfn "Resource not found (404 %O)." url
+            ExitCodes.EX_NOINPUT
+        | NocfoClient.Http.HttpError.RateLimited (url, _) ->
+            eprintfn "Rate limit exceeded after retries (%O)." url
+            ExitCodes.EX_UNAVAILABLE
+        | NocfoClient.Http.HttpError.ServerError (url, code, body) ->
+            eprintfn "Server error %A at %O: %s" code url (body.Substring(0, min 200 body.Length))
+            ExitCodes.EX_UNAVAILABLE
+        | NocfoClient.Http.HttpError.ClientError (url, code, body) ->
+            eprintfn "Request error %A at %O: %s" code url (body.Substring(0, min 200 body.Length))
+            ExitCodes.EX_UNAVAILABLE
+        | NocfoClient.Http.HttpError.ParseError (url, message) ->
+            eprintfn "Unexpected API response at %O: %s" url message
+            ExitCodes.EX_SOFTWARE
     | DomainError.Unexpected message when message.StartsWith("No matching business:", StringComparison.Ordinal) ->
+        eprintfn "%s" message
         ExitCodes.EX_NOINPUT
-    | DomainError.Unexpected _ -> ExitCodes.EX_SOFTWARE
+    | DomainError.Unexpected message ->
+        eprintfn "Unexpected error: %s" message
+        ExitCodes.EX_SOFTWARE
 
 type private MapAccountsOutcome =
     | Mapped of Mapping.IDMap

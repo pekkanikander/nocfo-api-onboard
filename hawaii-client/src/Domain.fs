@@ -355,7 +355,7 @@ module Account =
       match result with
       | Ok account ->
           return Ok account
-      | Error err when err.statusCode = HttpStatusCode.NotFound ->
+      | Error (Http.HttpError.NotFound _) ->
           return Error (missingAccountError id)
       | Error err ->
           return Error (DomainError.Http err)
@@ -486,7 +486,7 @@ module Contact =
       match result with
       | Ok contact ->
           return Ok contact
-      | Error err when err.statusCode = HttpStatusCode.NotFound ->
+      | Error (Http.HttpError.NotFound _) ->
           return Error (missingContactError id)
       | Error err ->
           return Error (DomainError.Http err)
