@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/hawaii-client/" />
+  <Folder Name="/hawaii-client/generated/">
+    <Project Path="hawaii-client/generated/NocfoApi.fsproj" />
+  </Folder>
+  <Folder Name="/hawaii-client/src/">
+    <Project Path="hawaii-client/src/hawaii-client.csproj" />
+  </Folder>
+  <Project Path="hawaii-client/hawaii-client.fsproj" />
+  <Project Path="tests/tests.fsproj" />
+  <Project Path="tools/tools.fsproj" />
+</Solution>

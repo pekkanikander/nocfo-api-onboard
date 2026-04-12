@@ -68,10 +68,14 @@ v1-typescript/ … v4-fsharp/  Archived failed attempts — read-only
 ## Build Commands
 
 ```bash
-# Build the library
-dotnet build hawaii-client
+# Build everything (from repo root — uses nocfo.sln)
+dotnet build
 
-# Build the CLI (and first the library, if needed)
+# Run all unit tests
+dotnet test
+
+# Build a specific project
+dotnet build hawaii-client
 dotnet build tools
 
 # Run the CLI

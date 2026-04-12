@@ -167,11 +167,11 @@ If you use an upstream Hawaii, cross-check that those fixes have landed.
 
    The current config assumes you run this command from the repo root: `schema` is resolved from the working directory, while `output` is resolved relative to the config file.
 
-3. Rebuild this project (`(cd hawaii-client && dotnet build)`) to ensure the regenerated DLL still works with the domain layer.
+3. Rebuild everything from the repo root to verify the regenerated code compiles:
 
-4. Rebuild the CLI as well:
    ```bash
-   dotnet build tools
+   dotnet build
+   dotnet test
    ```
 
 **Operational note:** the local Hawaii fork still targets `net6.0`, so modern .NET SDKs emit support warnings during build. That warning is expected for now.

@@ -52,7 +52,7 @@ Requirements:
 - `NOCFO_TARGET_BASE_URL` (optional), fallback `NOCFO_BASE_URL`, default `https://api-tst.nocfo.io`
 - `NOCFO_SOURCE_TOKEN` (required for `map accounts`)
 - `NOCFO_SOURCE_BASE_URL` (optional, default `https://api-prd.nocfo.io`)
-- Build artifacts from `hawaii-client` (`dotnet build hawaii-client`)
+- Build artifacts: run `dotnet build` from the repo root (uses `nocfo.sln`)
 
 ## Command surface
 

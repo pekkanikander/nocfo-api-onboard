@@ -42,8 +42,8 @@ entities, writes them as CSV, and can reconcile edited rows back to the server.
 2. **Build once and run tests** (from repo root):
 
    ```bash
-   dotnet build tools
-   dotnet test tests
+   dotnet build
+   dotnet test
    ```
 
 3. **List businesses**:
@@ -181,11 +181,10 @@ Regenerate only when the NoCFO OpenAPI spec changes.
      --no-logo
    ```
 
-4. Rebuild the handwritten layers:
+4. Rebuild everything:
 
    ```bash
-   dotnet build hawaii-client/hawaii-client.fsproj
-   dotnet build tools/tools.fsproj
+   dotnet build
    ```
 
 Notes:
