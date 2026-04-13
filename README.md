@@ -1,16 +1,42 @@
 # NoCFO API Onboarding Experiments
 
-> **Status:** Exploration project. The code works, but the repository will not be maintained.
+> **Note:** Active development is being moved to [nocfo-api-tool](https://github.com/pekkanikander/nocfo-api-tool).
+> New development will happen there.
+
+This repository remains as an exploration archive.
+It records my late 2025 to early 2026 experiences with using LLMs to explore
+an area of coding where I had no experience.
+Through five iterations, I found a way to use a strongly typed functional language
+to interface with HTTP APIs in a streaming manner.
+I had done a somewhat similar prototype some 10 years back,
+at the time when ECMAScript 6 was still new and
+asynchronity was not that well supported by JS and libraries.
+At that time, the experience was quite frustrating and took weeks.
+
+This time the experience was much smoother, largely thanks to the emerge of LLMs.
+I was able to accomplish a number of iterations in a few days and weeks,
+exploring various languages and OpenAPI code generators.
+
+The Hawaii and F# based end result was good enough so that in April 2026 I decided to
+move the development into another repository, with the aim of making a
+clean, well managed, near-production quality open source tool.
+
+Hence, I'm preserving this repository as it records a number of valuable lessons learned.
+
+In the following, "we" denotes me as a human and my LLM helpers, ChatGPT and Claude.
+
+---
 
 This project documents five approaches we explored while building a small,
 functional-streaming-friendly client for the [NoCFO](https://nocfo.io/) accounting API.
 The fifth iteration `hawaii-client/` — which pairs [F#](https://fsharp.org)
 and the [Hawaii](https://github.com/pekkanikander/Hawaii) OpenAPI generator —
-is the first version we are somewhat satisfied with.
+is the first version I am somewhat satisfied with.
 The earlier attempts remain in the repo so future readers
 can see what worked, what failed, and why.
 
-If you are evaluating NoCFO, experimenting with functional programming against financial APIs, or comparing OpenAPI toolchains, this repository is intended as a concise field report.
+If you are evaluating NoCFO, experimenting with functional programming against financial APIs,
+or comparing OpenAPI toolchains, this repository is intended as a concise field report.
 
 ## Repository Tour
 
@@ -218,11 +244,7 @@ For a more step-by-step build instructions, see `hawaii-client/README.md`.
 ## Status and Next Steps
 
 We consider this iteration “good enough to be somewhat useful for developers.”
-At this point, future improvements (if someone picks it up) would include:
-
-- AsyncSeq wrappers for more endpoints (transactions, VAT returns).
-- Folding functions for balance sheets and cash-flow reports.
-- Upstreaming the Hawaii patches instead of relying on a local fork.
+As of April 13, 2026, all new development is being moved to the new repo.
 
 If you use any part of this repo, please do so at your own discretion.
 Contributions are welcome, but we may not respond quickly.
